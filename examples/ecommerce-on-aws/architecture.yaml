@@ -1,0 +1,257 @@
+# blueprint-md example: a serverless e-commerce platform on AWS
+title: Online Store on AWS
+summary: >
+  Shoppers browse and buy through CloudFront and API Gateway. Containerised catalog and order
+  services run on Fargate; checkout is a Step Functions workflow that charges the card with Stripe
+  and publishes OrderPlaced to EventBridge. Fulfilment, notifications and analytics react to that
+  event independently, and product search uses OpenSearch with Bedrock embeddings.
+
+groups:
+  aws:
+    label: AWS Cloud
+    icon: aws:AWS-Cloud-logo
+    color: orange
+  region:
+    label: eu-central-1
+    icon: aws:Region
+    color: gray
+    parent: aws
+    about: Single region with three Availability Zones; all stateful services are Multi-AZ.
+  vpc:
+    label: VPC · private subnets
+    icon: aws:Amazon-Virtual-Private-Cloud
+    color: green
+    parent: region
+    about: Services and the database have no public IPs; outbound traffic leaves through NAT gateways.
+
+components:
+  shopper:
+    type: generic/user
+    name: Shopper
+    kind: web & mobile
+    at: [0, 1.5]
+    about: Browses products, searches in natural language and checks out.
+
+  # ── edge ────────────────────────────────────────────────
+  cdn:
+    type: aws/cloudfront
+    group: aws
+    at: [1.4, 1.5]
+    about: Single entry point. Serves the storefront from S3 and routes /api/* to API Gateway; AWS WAF is attached here.
+
+  # ── regional, public endpoints ──────────────────────────
+  auth:
+    type: aws/cognito
+    name: Customer Accounts
+    group: region
+    at: [2.8, 0.3]
+    about: Shopper sign-up, sign-in and social login. Issues the JWTs that API Gateway checks.
+  api:
+    type: aws/api-gateway
+    name: Store API
+    group: region
+    at: [2.8, 1.5]
+    tech: HTTP API, JWT authorizer, VPC link
+    about: Public REST API for the storefront. Validates tokens, throttles per client and forwards to the services over a VPC link.
+  assets:
+    type: aws/s3
+    name: Storefront
+    kind: static web app
+    group: region
+    at: [2.8, 2.8]
+    code: apps/storefront
+    about: Built Next.js storefront (static export) and product images; only CloudFront can read it (origin access control).
+
+  # ── VPC ─────────────────────────────────────────────────
+  catalog:
+    type: aws/fargate
+    name: Catalog Service
+    group: vpc
+    at: [4.2, 0.3]
+    code: services/catalog
+    tech: TypeScript, ECS on Fargate
+    about: Product details, prices and search. Keeps the OpenSearch index in sync with the product data.
+  orders:
+    type: aws/fargate
+    name: Order Service
+    group: vpc
+    at: [4.2, 1.5]
+    code: services/orders
+    tech: TypeScript, ECS on Fargate
+    about: Owns orders and stock. Reads the cart, reserves stock in one transaction and starts the checkout workflow.
+  db:
+    type: aws/aurora
+    name: Orders DB
+    kind: postgresql
+    group: vpc
+    at: [4.2, 2.8]
+    about: Aurora PostgreSQL (Serverless v2, Multi-AZ) for orders, order lines and stock levels.
+
+  # ── regional managed services ───────────────────────────
+  search:
+    type: aws/opensearch
+    name: Product Search
+    group: region
+    at: [5.6, 0.3]
+    tech: OpenSearch Serverless, vector + keyword index
+    about: Hybrid keyword and vector search over the catalog.
+  ai:
+    type: aws/bedrock
+    name: Embeddings
+    group: region
+    at: [7, 0.3]
+    tech: Titan Text Embeddings
+    about: Turns product texts and shopper queries into vectors through the OpenSearch ML connector.
+  carts:
+    type: aws/dynamodb
+    name: Carts
+    group: region
+    at: [5.6, 2.8]
+    about: Shopping carts keyed by session, with a TTL so abandoned carts expire on their own.
+  checkout:
+    type: aws/step-functions
+    name: Checkout
+    group: region
+    at: [7, 1.5]
+    code: workflows/checkout
+    about: Express workflow - charge card, confirm stock, publish OrderPlaced; on payment failure it releases the reserved stock.
+  bus:
+    type: aws/eventbridge
+    name: Order Events
+    group: region
+    at: [8.4, 1.5]
+    tech: custom event bus, schema registry
+    about: Carries OrderPlaced, OrderShipped and OrderCancelled to every consumer through rules.
+  queue:
+    type: aws/sqs
+    name: Fulfilment Queue
+    group: region
+    at: [9.8, 1.5]
+    about: Buffers orders for fulfilment, with a dead-letter queue for orders the partner rejects.
+  fulfil:
+    type: aws/lambda
+    name: Fulfilment
+    group: region
+    at: [11.2, 1.5]
+    code: functions/fulfilment
+    about: Sends each order to the logistics partner and publishes OrderShipped with the tracking number.
+  notify:
+    type: aws/sns
+    name: Notifications
+    kind: email · sms
+    group: region
+    at: [8.4, 0.3]
+    about: Order confirmation and shipping updates to the shopper.
+  lake:
+    type: aws/s3
+    name: Data Lake
+    group: region
+    at: [8.4, 2.8]
+    tech: Firehose → Parquet, partitioned by day
+    about: Every order event, archived as Parquet by Amazon Data Firehose.
+  etl:
+    type: aws/glue
+    name: Nightly ETL
+    group: region
+    at: [9.8, 2.8]
+    about: Cleans and joins the day's events and loads them into Snowflake.
+
+  # ── outside AWS ─────────────────────────────────────────
+  stripe:
+    type: stripe/payments
+    at: [7, 4.3]
+    about: Card and wallet payments. The Payment Intent is created and confirmed by the checkout workflow.
+  warehouse:
+    type: snowflake/warehouse
+    name: Snowflake
+    kind: analytics warehouse
+    at: [9.8, 4.3]
+    about: Sales, conversion and stock reporting for the business, shared with Finance.
+  logistics:
+    type: generic/external-system
+    name: Logistics Partner
+    kind: 3PL warehouse
+    at: [12.8, 1.5]
+    about: Third-party warehouse that picks, packs and ships. Exposes a REST API and sends tracking updates.
+
+connections:
+  - shopper -> cdn: browse & buy
+    primary: true
+    protocol: HTTPS
+  - cdn -> assets: storefront
+    protocol: origin access control
+  - cdn -> api: /api/*
+    primary: true
+  - api -> auth: verify JWT
+  - api -> catalog: products
+  - api -> orders: place order
+    primary: true
+    protocol: VPC link
+  - catalog -> search: query
+  - search -> ai: embed
+    protocol: ML connector
+  - orders -> db: stock
+    protocol: SQL, TLS
+  - orders -> carts: read cart
+    route: vhv
+  - orders -> checkout: start
+    primary: true
+    data: orderId, amount
+  - checkout -> stripe: charge
+    route: v
+    protocol: REST, idempotency key
+  - checkout ..> bus: OrderPlaced
+    primary: true
+  - bus ..> queue: rule
+    primary: true
+  - queue -> fulfil: poll
+    primary: true
+  - fulfil -> logistics: ship
+    primary: true
+    protocol: REST, OAuth 2.0
+  - bus ..> notify: rule
+  - bus ..> lake: Firehose
+  - lake ..> etl: nightly
+  - etl ..> warehouse: load
+    protocol: Snowpipe
+
+flows:
+  Shopper places an order: [shopper, cdn, api, orders, checkout, bus, queue, fulfil, logistics]
+  Shopper searches "warm jacket for hiking": [shopper, cdn, api, catalog, search, ai]
+  Nightly sales reporting: [bus, lake, etl, warehouse]
+
+decisions:
+  - title: EventBridge as the backbone after checkout
+    status: accepted
+    context: Fulfilment, notifications and analytics all react to a placed order, and more consumers will follow.
+    decision: Checkout publishes one OrderPlaced event; each consumer gets its own EventBridge rule.
+    alternatives: [SNS fan-out (no content-based routing or schema registry), Direct calls from checkout (couples checkout to every consumer)]
+    consequences: New consumers need no change to checkout. Consumers must be idempotent, because events can arrive twice.
+  - title: Step Functions for checkout instead of code in the order service
+    status: accepted
+    context: Checkout spans payment, stock and events, and must undo the stock reservation when payment fails.
+    decision: An Express workflow orchestrates the steps with retries and a compensation path.
+    alternatives: [Saga inside the order service (harder to see and retry), Choreography with events only (no single view of a checkout)]
+    consequences: Every checkout is visible step by step in the console; workflow definitions live in workflows/.
+  - title: Aurora for orders, DynamoDB for carts
+    status: accepted
+    context: Orders need transactions across order lines and stock; carts are high-volume, short-lived key-value data.
+    decision: Orders and stock in Aurora PostgreSQL; carts in DynamoDB with TTL.
+    consequences: Two data stores to operate, but each fits its access pattern and carts never load the orders database.
+  - title: Fargate for services, Lambda for event handlers
+    status: accepted
+    decision: Long-running APIs with steady traffic run as containers; short event-driven steps run as functions.
+    alternatives: [Everything on Lambda (cold starts on the API, connection pooling to Aurora), Everything on EKS (cluster to operate)]
+    consequences: Two deployment styles, both defined in one CDK app.
+  - title: Semantic product search with Bedrock embeddings
+    status: proposed
+    context: Shoppers describe what they need ("warm jacket for hiking") rather than typing product names.
+    decision: Hybrid keyword and vector search in OpenSearch Serverless; embeddings from Bedrock through the ML connector.
+    alternatives: [Keyword search only (misses intent), Algolia (another vendor and data copy)]
+    consequences: Embedding costs per product update and per query; the index must be rebuilt when the embedding model changes.
+
+notes: |
+  - Infrastructure as code: one AWS CDK app in infra/, one stack per group (edge, services, data, events).
+  - Repo layout: apps/storefront, services/<name>, functions/<name>, workflows/<name>.
+  - Secrets (Stripe key, logistics client secret) live in AWS Secrets Manager; never in environment files.
+  - Every event carries orderId and a correlationId; log both in every service.

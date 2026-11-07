@@ -5,8 +5,8 @@
 Describe a system in one small YAML file, or let your AI agent design it with you. blueprint-md turns that file into a clean architecture diagram with real logos, plus an `ARCHITECTURE.md` that tells a coding agent exactly what each component does and what it may talk to.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/order-to-cash/architecture-dark.png">
-  <img alt="Order-to-Cash architecture: a B2B customer orders in Experience Cloud, Sales Cloud publishes order events, MuleSoft process and system APIs create the order in SAP S/4HANA, and invoice status flows back in an hourly batch" src="examples/order-to-cash/architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="examples/ecommerce-on-aws/architecture-dark.png">
+  <img alt="Online store on AWS: shoppers come in through CloudFront and API Gateway, catalog and order services run on Fargate inside a VPC, a Step Functions checkout charges Stripe and publishes OrderPlaced to EventBridge, which feeds fulfilment through SQS and Lambda to a logistics partner, notifications through SNS, and a nightly S3 and Glue pipeline into Snowflake; product search uses OpenSearch with Bedrock embeddings" src="examples/ecommerce-on-aws/architecture.png">
 </picture>
 
 ## Why
@@ -26,45 +26,55 @@ architecture.yaml  ──build──▶  architecture.html / .png   for people
 ## What it looks like
 
 ```yaml
-title: Order-to-Cash
+title: Online Store on AWS
 
 groups:
-  sf:   {label: Salesforce Org, icon: salesforce, color: blue}
-  mule: {label: MuleSoft Anypoint, icon: lucide:workflow, color: teal}
+  aws:    {label: AWS Cloud, icon: aws:AWS-Cloud-logo, color: orange}
+  region: {label: eu-central-1, icon: aws:Region, parent: aws}
+  vpc:    {label: VPC · private subnets, icon: aws:Amazon-Virtual-Private-Cloud, color: green, parent: region}
 
 components:
-  sales:
-    type: salesforce/sales-cloud        # building block from the catalog
-    group: sf
-    at: [1, 1]
-    about: System of record for accounts and orders.
-  events:
-    type: salesforce/platform-event
-    name: Order Events                  # project-specific name
-    group: sf
-    at: [2, 1]
-  process:
-    type: mulesoft/process-api
-    name: Order Process API
-    group: mule
-    at: [3.5, 1]
+  orders:
+    type: aws/fargate                   # building block from the catalog
+    name: Order Service                 # project-specific name
+    group: vpc
+    at: [4.2, 1.5]
+    code: services/orders
+    about: Owns orders and stock. Reserves stock and starts the checkout workflow.
+  checkout:
+    type: aws/step-functions
+    name: Checkout
+    group: region
+    at: [7, 1.5]
+  bus:
+    type: aws/eventbridge
+    name: Order Events
+    group: region
+    at: [8.4, 1.5]
+  stripe:
+    type: stripe/payments               # catalogs cover SaaS too
+    at: [7, 4.3]
 
 connections:
-  - sales -> events: order activated
+  - orders -> checkout: start
     primary: true
-  - events -> process: subscribe
+  - checkout -> stripe: charge
+    protocol: REST, idempotency key
+  - checkout ..> bus: OrderPlaced       # dashed = async
     primary: true
-    protocol: Pub/Sub API (gRPC)
 
 decisions:
-  - title: Platform Events instead of polling
+  - title: EventBridge as the backbone after checkout
     status: accepted
-    alternatives: [Scheduled polling (API limits), Outbound messages (no replay)]
+    alternatives: [SNS fan-out (no content-based routing), Direct calls (couples checkout to every consumer)]
 ```
 
-More examples: [`examples/salesforce-to-aws/`](examples/salesforce-to-aws/) shows Salesforce events processed on AWS with the official AWS icons.
+See the full example in [`examples/ecommerce-on-aws/`](examples/ecommerce-on-aws/): the [YAML](examples/ecommerce-on-aws/architecture.yaml), the [generated ARCHITECTURE.md](examples/ecommerce-on-aws/ARCHITECTURE.md) and the [interactive HTML](examples/ecommerce-on-aws/architecture.html). The full format is in [`skills/blueprint-md/references/format.md`](skills/blueprint-md/references/format.md).
 
-See the full example in [`examples/order-to-cash/`](examples/order-to-cash/): the [YAML](examples/order-to-cash/architecture.yaml), the [generated ARCHITECTURE.md](examples/order-to-cash/ARCHITECTURE.md) and the [interactive HTML](examples/order-to-cash/architecture.html). The full format is in [`skills/blueprint-md/references/format.md`](skills/blueprint-md/references/format.md).
+More examples:
+
+- [`examples/order-to-cash/`](examples/order-to-cash/): Salesforce orders to SAP S/4HANA through MuleSoft API-led layers
+- [`examples/salesforce-to-aws/`](examples/salesforce-to-aws/): Salesforce events processed on AWS
 
 ## Building block catalog
 
@@ -76,7 +86,14 @@ python3 skills/blueprint-md/scripts/blueprint.py catalog event      # search
 ```
 
 - **Browse it:** [`skills/blueprint-md/catalog/README.md`](skills/blueprint-md/catalog/README.md)
-- **Included (139 blocks):** Salesforce and MuleSoft (clouds, Flow, Apex, Platform Events, Change Data Capture, Pub/Sub API, Named Credentials, API-led layers…), AWS, Microsoft Azure and Google Cloud (compute, storage, databases, integration, networking, security, analytics and AI), and generic blocks (user, service, database, queue, scheduler…)
+- **Included (230 blocks):**
+  - **Clouds:** AWS, Microsoft Azure and Google Cloud (compute, storage, databases, integration, networking, security, analytics and AI)
+  - **Salesforce and MuleSoft:** clouds, Flow, Apex, Platform Events, Change Data Capture, Pub/Sub API, Named Credentials, API-led layers…
+  - **Data platforms:** Snowflake, Databricks, Confluent/Kafka, dbt, Fivetran, Airbyte, Airflow, Power BI
+  - **Enterprise SaaS:** SAP, Microsoft 365, Dynamics 365 and Power Platform, ServiceNow, Workday, Oracle, HubSpot, Zendesk, Jira
+  - **Developer and web platforms:** Kubernetes, Docker, Vercel, Cloudflare, Supabase, GitHub, Stripe, Twilio, MongoDB, Datadog, the Claude and OpenAI APIs…
+  - **Identity:** Okta, Auth0, Ping, Keycloak, Vault, plus SAML, OIDC, OAuth and SCIM
+  - **Generic:** user, service, database, queue, scheduler…
 - **Use it:** `type: salesforce/platform-event` on a component fills in name, role and icon, and ARCHITECTURE.md adds the description, docs link and what the block is not meant for
 - **Extend it:** add `catalog/<domain>.yaml` to the skill, or `catalogs: [my-blocks.yaml]` to one project
 - **Keep it current:** entries hold only stable facts and link to the official docs for details that change. Each entry has a `checked: YYYY-MM` date. `blueprint.py catalog --check` validates every entry, flags entries not reviewed for six months, and opens every docs link in a headless browser. A GitHub Action runs it every month and whenever the catalog changes.
@@ -125,7 +142,7 @@ python3 skills/blueprint-md/scripts/blueprint.py check architecture.yaml
 
 - [x] Building block catalog with docs links and automatic link checks
 - [x] Catalogs for AWS, Azure and Google Cloud with the official icon sets
-- [ ] More catalogs: SAP, Microsoft 365, data platforms
+- [x] More catalogs: data platforms, enterprise SaaS, developer platforms, identity
 - [ ] Project scaffolding from the YAML (starting with Salesforce SFDX projects)
 - [ ] Mermaid and C4 export
 - [ ] Official Salesforce architecture icon set
