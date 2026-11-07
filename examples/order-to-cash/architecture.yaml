@@ -1,0 +1,128 @@
+# blueprint-md example: Salesforce ↔ SAP order-to-cash through MuleSoft
+title: Order-to-Cash
+summary: >
+  Customers order in an Experience Cloud portal. Activated orders leave Salesforce as
+  Platform Events, MuleSoft turns them into SAP sales orders, and invoice status flows
+  back every hour.
+
+groups:
+  sf:
+    label: Salesforce Org
+    icon: salesforce
+    color: blue
+    about: Single production org, Sales and Service Cloud licenses.
+  mule:
+    label: MuleSoft Anypoint
+    icon: lucide:workflow
+    color: teal
+    about: API-led connectivity, CloudHub 2.0.
+  sap:
+    label: SAP
+    icon: sap
+    color: gray
+
+components:
+  customer:
+    name: B2B Customer
+    kind: buyer
+    icon: lucide:user
+    at: [0, 1]
+    about: Purchasing agent at a customer account.
+
+  portal:
+    name: Experience Cloud
+    kind: customer portal
+    icon: salesforce
+    group: sf
+    at: [1, 0]
+    about: Self-service portal where customers browse prices and place orders.
+  sales:
+    name: Sales Cloud
+    kind: accounts · orders
+    icon: salesforce
+    group: sf
+    at: [1, 1]
+    about: System of record for accounts, contracts and orders. Owns the Order object.
+    code: force-app/main/default/objects/Order
+  service:
+    name: Service Cloud
+    kind: cases
+    icon: salesforce
+    group: sf
+    at: [1, 2]
+    about: Handles order complaints; agents see order and invoice status on the case.
+  events:
+    name: Order Events
+    kind: platform event
+    icon: lucide:zap
+    group: sf
+    at: [2, 1]
+    tech: Order_Sync__e (high-volume platform event)
+    about: Published by a record-triggered flow when an order is activated.
+
+  process:
+    name: Order Process API
+    kind: process api
+    icon: lucide:git-merge
+    group: mule
+    at: [3.5, 1]
+    about: Maps Salesforce orders to SAP sales orders, handles retries and idempotency.
+  system:
+    name: SAP System API
+    kind: system api
+    icon: lucide:plug
+    group: mule
+    at: [4.5, 1]
+    about: Thin wrapper over SAP OData services; the only component allowed to call SAP.
+
+  erp:
+    name: SAP S/4HANA
+    kind: orders · invoices
+    icon: sap
+    group: sap
+    at: [6, 1]
+    about: System of record for pricing, fulfilment and invoicing.
+
+connections:
+  - customer -> portal: places order
+    primary: true
+  - portal -> sales: creates order
+    primary: true
+  - sales -> events: order activated
+    primary: true
+    about: Record-triggered flow publishes Order_Sync__e.
+  - events -> process: subscribe
+    primary: true
+    protocol: Pub/Sub API (gRPC)
+    data: Order_Sync__e
+  - process -> system: create order
+    primary: true
+    protocol: HTTPS / REST
+  - system -> erp: OData
+    primary: true
+    protocol: OData v4, OAuth 2.0
+    data: A_SalesOrder
+  - erp ..> sales: invoice status
+    about: Hourly batch through MuleSoft updates Invoice__c records on the order.
+  - service <-> sales: order lookup
+
+flows:
+  Order placed online: [customer, portal, sales, events, process, system, erp]
+
+decisions:
+  - title: Platform Events instead of polling
+    status: accepted
+    context: About 5,000 orders a day; SAP must see new orders within a minute.
+    decision: Publish Order_Sync__e on activation and let MuleSoft subscribe through the Pub/Sub API.
+    alternatives:
+      - Scheduled polling from MuleSoft (burns API limits, adds latency)
+      - Outbound messages (no replay, limited payload control)
+    consequences: Events are retained for 72 hours, so MuleSoft can replay after an outage.
+  - title: API-led layers in MuleSoft
+    status: accepted
+    decision: A process API holds the mapping logic; only the system API talks to SAP.
+    why: SAP changes stay behind one API, and other channels can reuse the process API later.
+
+notes: |
+  Salesforce metadata lives in an SFDX project (force-app/). MuleSoft apps live in mule/.
+  Use Named Credentials for every outbound call from Salesforce.
