@@ -1,0 +1,304 @@
+# Developer and web platform building blocks for blueprint-md.
+# Icons are brand logos looked up in svgl, devicon or gilbarbara/logos; concept blocks use lucide.
+# Keep entries short and stable; numbers that change (limits, quotas, pricing) belong behind the docs link.
+
+title: Developer & web platforms
+entries:
+
+  # ── Containers & Kubernetes ─────────────────────────────────────────────────
+  kubernetes/cluster:
+    name: Kubernetes Cluster
+    kind: container cluster
+    category: Compute
+    icon: kubernetes
+    what: A group of machines that runs and schedules containers, self-managed or as a cloud service.
+    use_when: Many services that need the same deployment, scaling and networking model on any cloud.
+    avoid_when: A few services that a container platform or functions can run with far less operations work.
+    connects_with: [kubernetes/deployment, kubernetes/ingress, docker/container, aws/eks, azure/aks, gcp/gke]
+    docs: https://kubernetes.io/docs/concepts/overview/
+    checked: 2026-11
+  kubernetes/deployment:
+    name: Kubernetes Deployment
+    kind: workload
+    category: Compute
+    icon: lucide:boxes
+    what: Keeps a set of identical pods (one or more containers each) running and rolls out new versions.
+    use_when: Show one stateless service inside a cluster and how many copies of it run.
+    avoid_when: Databases and other stateful workloads (use a StatefulSet or a managed service).
+    connects_with: [kubernetes/cluster, kubernetes/ingress, docker/container]
+    docs: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+    checked: 2026-11
+  kubernetes/ingress:
+    name: Kubernetes Ingress
+    kind: http routing
+    category: Networking & delivery
+    icon: lucide:door-open
+    what: Routes HTTP and HTTPS traffic from outside the cluster to services inside it.
+    use_when: Several services behind one hostname or load balancer, with TLS and path-based routing.
+    avoid_when: Non-HTTP traffic, or new clusters that standardize on the Gateway API.
+    connects_with: [kubernetes/deployment, cloudflare/cdn]
+    docs: https://kubernetes.io/docs/concepts/services-networking/ingress/
+    checked: 2026-11
+  docker/container:
+    name: Docker Container
+    kind: container image
+    category: Compute
+    icon: docker
+    what: An application packaged with its runtime and dependencies as an image, stored in a registry such as Docker Hub.
+    use_when: The same build must run the same way on laptops, CI and any container platform.
+    avoid_when: Code that a functions platform can run directly without a custom image.
+    connects_with: [kubernetes/deployment, gcp/cloud-run, github/actions, gitlab/ci-cd]
+    docs: https://docs.docker.com/get-started/docker-overview/
+    checked: 2026-11
+
+  # ── Web hosting & edge ──────────────────────────────────────────────────────
+  vercel/project:
+    name: Vercel
+    kind: frontend hosting
+    category: App platform
+    icon: vercel
+    what: Builds and hosts web frontends from Git, with serverless and edge functions next to them.
+    use_when: Next.js or other modern web frontends that want preview deployments per pull request.
+    avoid_when: Long-running backends, background workers or heavy compute.
+    connects_with: [github/repo, supabase/project, stripe/payments, cloudflare/cdn]
+    docs: https://vercel.com/docs
+    checked: 2026-11
+  netlify/site:
+    name: Netlify
+    kind: frontend hosting
+    category: App platform
+    icon: netlify
+    what: Builds and hosts static and server-rendered sites from Git, with serverless functions and forms.
+    use_when: Marketing sites, documentation and Jamstack frontends with preview deployments.
+    avoid_when: Long-running backends, background workers or heavy compute.
+    connects_with: [github/repo, gitlab/ci-cd, supabase/project]
+    docs: https://docs.netlify.com/
+    checked: 2026-11
+  cloudflare/cdn:
+    name: Cloudflare CDN & WAF
+    kind: cdn / waf
+    category: Networking & delivery
+    icon: cloudflare
+    what: Global proxy in front of a site that caches content, blocks attacks and absorbs DDoS traffic.
+    use_when: Public websites and APIs that need speed, TLS and protection in front of any origin.
+    avoid_when: Internal-only systems that are never reached from the internet.
+    connects_with: [cloudflare/workers, cloudflare/r2, vercel/project, kubernetes/ingress, aws/s3]
+    docs: https://developers.cloudflare.com/cache/
+    checked: 2026-11
+  cloudflare/workers:
+    name: Cloudflare Workers
+    kind: edge functions
+    category: Compute
+    icon: lucide:zap
+    what: Runs JavaScript, TypeScript or WebAssembly in Cloudflare's network close to the user.
+    use_when: Low-latency APIs, request rewriting, auth checks or personalization at the edge.
+    avoid_when: Long-running jobs or code that needs a full operating system or large native libraries.
+    connects_with: [cloudflare/cdn, cloudflare/r2, cloudflare/d1]
+    docs: https://developers.cloudflare.com/workers/
+    checked: 2026-11
+  cloudflare/r2:
+    name: Cloudflare R2
+    kind: object storage
+    category: Storage & databases
+    icon: lucide:hard-drive
+    what: S3-compatible object storage without egress fees.
+    use_when: Files, media and backups that are read often from the internet or from other clouds.
+    avoid_when: Workloads that rely on features only one cloud's native object storage offers.
+    connects_with: [cloudflare/workers, cloudflare/cdn]
+    docs: https://developers.cloudflare.com/r2/
+    checked: 2026-11
+  cloudflare/d1:
+    name: Cloudflare D1
+    kind: sql database
+    category: Storage & databases
+    icon: lucide:database
+    what: Serverless SQLite database built for Workers.
+    use_when: Small relational data close to Workers, such as settings, sessions or per-tenant databases.
+    avoid_when: Large, write-heavy or analytical databases that need a full Postgres or MySQL server.
+    connects_with: [cloudflare/workers]
+    docs: https://developers.cloudflare.com/d1/
+    checked: 2026-11
+
+  # ── Backend platforms & databases ───────────────────────────────────────────
+  supabase/project:
+    name: Supabase
+    kind: backend platform
+    category: App platform
+    icon: supabase
+    what: Managed Postgres with authentication, file storage, realtime updates and edge functions in one project.
+    use_when: Web and mobile apps that want a relational backend and login without running servers.
+    avoid_when: Systems that already have their own identity provider and database platform.
+    connects_with: [vercel/project, netlify/site, stripe/payments, generic/web-app, generic/mobile-app]
+    docs: https://supabase.com/docs
+    checked: 2026-11
+  postgresql/database:
+    name: PostgreSQL
+    kind: sql database
+    category: Storage & databases
+    icon: postgresql
+    what: Open-source relational database, self-managed or run by any cloud or platform provider.
+    use_when: Relational data with transactions and joins, when the engine matters more than the host.
+    avoid_when: Very large key-value or document workloads where a NoSQL store fits better.
+    connects_with: [kubernetes/deployment, supabase/project, aws/rds]
+    docs: https://www.postgresql.org/docs/
+    checked: 2026-11
+  mongodb/atlas:
+    name: MongoDB Atlas
+    kind: document database
+    category: Storage & databases
+    icon: mongodb
+    what: Managed MongoDB document database on AWS, Azure or Google Cloud, with search and vector search.
+    use_when: Flexible JSON-like records that change shape often, or one database across several clouds.
+    avoid_when: Highly relational data with many joins and strict cross-record transactions.
+    connects_with: [kubernetes/deployment, vercel/project, aws/lambda]
+    docs: https://www.mongodb.com/docs/atlas/
+    checked: 2026-11
+  redis/cloud:
+    name: Redis Cloud
+    kind: in-memory store
+    category: Storage & databases
+    icon: redis
+    what: Managed Redis for caching, sessions, rate limits, queues and pub/sub.
+    use_when: Fast reads of hot data, or short-lived shared state between service instances.
+    avoid_when: The only copy of important data that must survive every failure.
+    connects_with: [kubernetes/deployment, postgresql/database, aws/lambda]
+    docs: https://redis.io/docs/latest/operate/rc/
+    checked: 2026-11
+  elastic/cloud:
+    name: Elastic Cloud
+    kind: search & logs
+    category: Storage & databases
+    icon: elasticsearch
+    what: Managed Elasticsearch and Kibana for full-text search, log analytics and observability.
+    use_when: Search across large text collections, or central log search and dashboards.
+    avoid_when: The main transactional database, or simple search a hosted search API covers.
+    connects_with: [kubernetes/cluster, postgresql/database, datadog/monitoring]
+    docs: https://www.elastic.co/docs/deploy-manage/deploy/elastic-cloud
+    checked: 2026-11
+  algolia/search:
+    name: Algolia
+    kind: search api
+    category: Integration
+    icon: algolia
+    what: Hosted search and discovery API with typo tolerance, facets and ranking rules.
+    use_when: Fast search-as-you-type in a web shop, documentation site or app.
+    avoid_when: Log analytics or search over data that must never leave your own infrastructure.
+    connects_with: [vercel/project, netlify/site, postgresql/database]
+    docs: https://www.algolia.com/doc/
+    checked: 2026-11
+
+  # ── Code & delivery ─────────────────────────────────────────────────────────
+  github/repo:
+    name: GitHub Repository
+    kind: code repository
+    category: Automation & code
+    icon: github
+    what: Git repository with pull requests, code review, issues and access control.
+    use_when: Show where the source code lives and which deployments it triggers.
+    connects_with: [github/actions, vercel/project, netlify/site]
+    docs: https://docs.github.com/en/repositories
+    checked: 2026-11
+  github/actions:
+    name: GitHub Actions
+    kind: ci/cd pipeline
+    category: Automation & code
+    icon: githubactions
+    what: Runs build, test and deploy workflows on events in a GitHub repository.
+    use_when: Code already lives on GitHub and you want CI/CD next to it.
+    avoid_when: Deploys that must run only inside a private network without self-hosted runners.
+    connects_with: [github/repo, docker/container, kubernetes/cluster, aws/lambda]
+    docs: https://docs.github.com/en/actions
+    checked: 2026-11
+  gitlab/ci-cd:
+    name: GitLab CI/CD
+    kind: ci/cd pipeline
+    category: Automation & code
+    icon: gitlab
+    what: Pipelines defined next to the code in a GitLab repository, on shared or self-hosted runners.
+    use_when: Code lives on GitLab, or one self-hosted platform for code, CI/CD and registry is wanted.
+    connects_with: [docker/container, kubernetes/cluster]
+    docs: https://docs.gitlab.com/ci/
+    checked: 2026-11
+
+  # ── Payments & messaging ────────────────────────────────────────────────────
+  stripe/payments:
+    name: Stripe Payments
+    kind: payments
+    category: Integration
+    icon: stripe
+    what: Accepts card and local payment methods, subscriptions and invoices through an API and hosted pages.
+    use_when: Online checkout or recurring billing without handling raw card data yourself; confirm payments through Stripe webhooks.
+    avoid_when: Payment flows tied to a provider your company or region already requires.
+    connects_with: [generic/webhook, vercel/project, supabase/project]
+    docs: https://docs.stripe.com/payments
+    checked: 2026-11
+  twilio/messaging:
+    name: Twilio
+    kind: sms & voice
+    category: Integration
+    icon: twilio
+    what: API for sending and receiving SMS, WhatsApp messages and phone calls, plus one-time codes.
+    use_when: Notifications, two-factor codes or support conversations over phone and messaging.
+    avoid_when: Bulk marketing to users who have not opted in, or channels your users do not use.
+    connects_with: [generic/webhook, aws/lambda]
+    docs: https://www.twilio.com/docs/messaging
+    checked: 2026-11
+  sendgrid/email:
+    name: Twilio SendGrid
+    kind: email api
+    category: Integration
+    icon: sendgrid
+    what: Email delivery API and SMTP relay for transactional and marketing email.
+    use_when: High-volume transactional email, or one provider for both transactional and marketing mail.
+    avoid_when: A few emails a day that the platform you already use can send.
+    connects_with: [twilio/messaging, generic/email]
+    docs: https://www.twilio.com/docs/sendgrid
+    checked: 2026-11
+
+  # ── Operations ──────────────────────────────────────────────────────────────
+  datadog/monitoring:
+    name: Datadog
+    kind: observability
+    category: Operations
+    icon: datadog
+    what: Metrics, logs, traces and alerts across clouds, containers and services in one place.
+    use_when: Systems that span several clouds or platforms and need one view for on-call.
+    avoid_when: Small systems that a cloud's built-in monitoring already covers.
+    connects_with: [kubernetes/cluster, aws/lambda, sentry/errors]
+    docs: https://docs.datadoghq.com/
+    checked: 2026-11
+  sentry/errors:
+    name: Sentry
+    kind: error tracking
+    category: Operations
+    icon: sentry
+    what: Captures errors and slow transactions from apps with stack traces and release context.
+    use_when: Web, mobile and backend apps where developers need to see and fix crashes quickly.
+    avoid_when: Infrastructure metrics and log retention (use a monitoring platform).
+    connects_with: [vercel/project, github/repo, datadog/monitoring]
+    docs: https://docs.sentry.io/
+    checked: 2026-11
+
+  # ── AI model APIs ───────────────────────────────────────────────────────────
+  anthropic/claude-api:
+    name: Claude API
+    kind: llm api
+    category: Analytics & AI
+    icon: claude
+    what: Anthropic's hosted API for Claude models, with tool use, vision and long context.
+    use_when: Agents, coding help, document analysis and other text tasks that need careful reasoning.
+    avoid_when: Data that must not leave your own infrastructure, or tasks a small rule or classifier solves.
+    connects_with: [generic/ai-model, aws/bedrock, aws/lambda, vercel/project]
+    docs: https://docs.claude.com/
+    checked: 2026-11
+  openai/api:
+    name: OpenAI API
+    kind: llm api
+    category: Analytics & AI
+    icon: openai
+    what: OpenAI's hosted API for GPT models, embeddings, image and speech models.
+    use_when: Text generation, embeddings, transcription or image tasks from application code.
+    avoid_when: Data that must not leave your own infrastructure, or tasks a small rule or classifier solves.
+    connects_with: [generic/ai-model, aws/lambda, vercel/project]
+    docs: https://platform.openai.com/docs/
+    checked: 2026-11

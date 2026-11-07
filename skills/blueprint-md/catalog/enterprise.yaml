@@ -1,0 +1,304 @@
+# Enterprise SaaS building blocks for blueprint-md: SAP, Microsoft, ServiceNow, Workday, Oracle and other business apps.
+# Keep entries short and stable; numbers that change (limits, quotas, pricing) belong behind the docs link.
+# ServiceNow, Workday, NetSuite, Dynamics 365 and Power Platform have no logo in the public libraries, so they use the vendor logo or pictograms.
+
+title: Enterprise SaaS
+entries:
+
+  # ── SAP ─────────────────────────────────────────────────────────────────────
+  sap/s4hana:
+    name: SAP S/4HANA
+    kind: erp
+    category: Clouds & products
+    icon: sap
+    what: SAP's ERP suite for finance, procurement, sales orders, manufacturing and logistics, in the cloud or on premises.
+    use_when: The system of record for orders, invoices, materials and the general ledger.
+    avoid_when: Customer engagement and sales pipeline work (keep that in a CRM and sync the results).
+    connects_with: [sap/odata-api, sap/idoc, sap/integration-suite, sap/event-mesh, mulesoft/system-api]
+    docs: https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE
+    checked: 2026-11
+  sap/btp:
+    name: SAP BTP
+    kind: cloud platform
+    category: Clouds & products
+    icon: sap
+    what: SAP Business Technology Platform; runs SAP's integration, data, AI and extension services.
+    use_when: Use it as a group around SAP cloud services, or to build side-by-side extensions to S/4HANA.
+    avoid_when: General-purpose apps with no SAP data (a hyperscaler or Salesforce is simpler).
+    connects_with: [sap/s4hana, sap/integration-suite, sap/event-mesh, sap/datasphere]
+    docs: https://help.sap.com/docs/btp
+    checked: 2026-11
+  sap/integration-suite:
+    name: SAP Integration Suite
+    kind: integration
+    category: Integration
+    icon: sap
+    what: SAP's integration platform on BTP; Cloud Integration runs the flows, with prebuilt content for SAP apps.
+    use_when: Integrations centred on SAP systems, especially with SAP's prebuilt packages.
+    avoid_when: The company already runs another integration platform for its non-SAP landscape.
+    connects_with: [sap/s4hana, sap/successfactors, sap/ariba, sap/event-mesh, salesforce/sales-cloud]
+    docs: https://help.sap.com/docs/integration-suite
+    checked: 2026-11
+  sap/event-mesh:
+    name: SAP Event Mesh
+    kind: event broker
+    category: Integration
+    icon: lucide:radio-tower
+    what: Managed message broker for SAP business events; Advanced Event Mesh is the larger, multi-cloud edition.
+    use_when: React in near real time to S/4HANA or other SAP events (order created, invoice posted).
+    avoid_when: Bulk data transfer or request-reply calls that need an immediate answer.
+    connects_with: [sap/s4hana, sap/integration-suite, mulesoft/process-api, salesforce/platform-event]
+    docs: https://help.sap.com/docs/event-mesh
+    checked: 2026-11
+  sap/odata-api:
+    name: SAP OData API
+    kind: rest api
+    category: Integration
+    icon: lucide:file-code
+    what: Standard REST-style APIs for SAP business objects, published in the SAP Business Accelerator Hub.
+    use_when: Read or change S/4HANA records in real time from another system.
+    avoid_when: Large one-off data loads (use migration tools or file-based transfer).
+    connects_with: [sap/s4hana, mulesoft/system-api, salesforce/salesforce-connect]
+    docs: https://api.sap.com/
+    checked: 2026-11
+  sap/idoc:
+    name: SAP IDoc
+    kind: message format
+    category: Integration
+    icon: lucide:file-text
+    what: SAP's classic asynchronous document format for exchanging business data such as orders and master data.
+    use_when: Existing ERP integrations, EDI-style flows, or master data distribution that already uses IDocs.
+    avoid_when: New real-time integrations where an OData API or business event exists.
+    connects_with: [sap/s4hana, sap/integration-suite, mulesoft/system-api]
+    docs: https://help.sap.com/docs/SAP_NETWEAVER_750/8f3819b0c24149b5959ab31070b64058/4ab074b6aa2b1fb9e10000000a42189c.html
+    checked: 2026-11
+  sap/successfactors:
+    name: SAP SuccessFactors
+    kind: hcm
+    category: Clouds & products
+    icon: sap
+    what: SAP's cloud HR suite for employee records, recruiting, onboarding, performance and learning.
+    use_when: The system of record for employees in an SAP-centred company.
+    avoid_when: Payroll and time details other systems don't need (sync only the fields they use).
+    connects_with: [sap/integration-suite, sap/s4hana, azure/entra-id]
+    docs: https://help.sap.com/docs/SAP_SUCCESSFACTORS_PLATFORM
+    checked: 2026-11
+  sap/ariba:
+    name: SAP Ariba
+    kind: procurement
+    category: Clouds & products
+    icon: sap
+    what: Cloud procurement for sourcing, contracts, purchasing, supplier management and invoices.
+    use_when: Purchasing and supplier collaboration on a shared business network.
+    avoid_when: Simple purchase requests that the ERP's own purchasing handles.
+    connects_with: [sap/s4hana, sap/integration-suite]
+    docs: https://help.sap.com/docs/ariba
+    checked: 2026-11
+  sap/datasphere:
+    name: SAP Datasphere
+    kind: data warehouse
+    category: Analytics & AI
+    icon: sap
+    what: SAP's cloud data warehouse and data fabric that keeps SAP business meaning (models, hierarchies).
+    use_when: Reporting and planning across SAP and non-SAP data with SAP semantics kept intact.
+    avoid_when: Analytics with little SAP data (a general cloud warehouse is simpler).
+    connects_with: [sap/s4hana, sap/btp, generic/data-warehouse]
+    docs: https://help.sap.com/docs/SAP_DATASPHERE
+    checked: 2026-11
+
+  # ── Microsoft ───────────────────────────────────────────────────────────────
+  microsoft/m365:
+    name: Microsoft 365
+    kind: productivity suite
+    category: Clouds & products
+    icon: Microsoft Office
+    what: Microsoft's workplace suite with Outlook mail and calendar, Teams, SharePoint, OneDrive and Office apps.
+    use_when: Use it as a group around the workplace tools users already live in.
+    avoid_when: Business records with their own process (keep them in CRM, ERP or Dataverse).
+    connects_with: [microsoft/graph-api, microsoft/teams, microsoft/sharepoint, azure/entra-id]
+    docs: https://learn.microsoft.com/en-us/microsoft-365/
+    checked: 2026-11
+  microsoft/teams:
+    name: Microsoft Teams
+    kind: collaboration
+    category: Clouds & products
+    icon: microsoft-teams
+    what: Chat, meetings and channels, extensible with apps, bots and notifications.
+    use_when: Notify people, run approvals or surface business records where they already chat.
+    avoid_when: The only copy of a decision or record (store it in the system of record).
+    connects_with: [microsoft/graph-api, microsoft/power-automate, salesforce/sales-cloud]
+    docs: https://learn.microsoft.com/en-us/microsoftteams/platform/
+    checked: 2026-11
+  microsoft/sharepoint:
+    name: SharePoint
+    kind: documents
+    category: Storage & databases
+    icon: Microsoft SharePoint
+    what: Document libraries, lists and intranet sites with versioning and permissions.
+    use_when: Store and share contracts, files and team documents linked from business records.
+    avoid_when: Structured transactional data with relationships (use Dataverse or a database).
+    connects_with: [microsoft/graph-api, microsoft/power-automate, salesforce/salesforce-connect]
+    docs: https://learn.microsoft.com/en-us/sharepoint/
+    checked: 2026-11
+  microsoft/dynamics-365:
+    name: Dynamics 365
+    kind: crm
+    category: Clouds & products
+    icon: microsoft
+    what: Microsoft's business apps, notably Sales and Customer Service, built on Dataverse.
+    use_when: CRM and service processes in a Microsoft-centred company.
+    avoid_when: Running a second CRM next to an existing one without a clear split of ownership.
+    connects_with: [microsoft/dataverse, microsoft/power-automate, mulesoft/system-api]
+    docs: https://learn.microsoft.com/en-us/dynamics365/
+    checked: 2026-11
+  microsoft/dataverse:
+    name: Microsoft Dataverse
+    kind: business data
+    category: Storage & databases
+    icon: lucide:database
+    what: Managed business database with tables, security roles and APIs behind Dynamics 365 and Power Apps.
+    use_when: Store data for Power Platform apps and flows with row-level security.
+    avoid_when: High-volume telemetry or analytics workloads (use a database or warehouse).
+    connects_with: [microsoft/dynamics-365, microsoft/power-apps, microsoft/power-automate, azure/service-bus]
+    docs: https://learn.microsoft.com/en-us/power-apps/maker/data-platform/data-platform-intro
+    checked: 2026-11
+  microsoft/power-automate:
+    name: Power Automate
+    kind: low-code flows
+    category: Automation & code
+    icon: lucide:workflow
+    what: Low-code workflows and desktop automation with connectors for Microsoft 365 and many SaaS apps.
+    use_when: Approvals, notifications and light integrations owned by business teams.
+    avoid_when: Core system-to-system integration that needs versioning, testing and monitoring.
+    connects_with: [microsoft/dataverse, microsoft/teams, microsoft/sharepoint, azure/logic-apps]
+    docs: https://learn.microsoft.com/en-us/power-automate/
+    checked: 2026-11
+  microsoft/power-apps:
+    name: Power Apps
+    kind: low-code apps
+    category: Automation & code
+    icon: lucide:app-window
+    what: Low-code canvas and model-driven apps on Dataverse and other data sources.
+    use_when: Internal forms and simple business apps built quickly by business teams.
+    avoid_when: Customer-facing or complex apps that need full control over code and UX.
+    connects_with: [microsoft/dataverse, microsoft/power-automate, microsoft/sharepoint]
+    docs: https://learn.microsoft.com/en-us/power-apps/
+    checked: 2026-11
+  microsoft/graph-api:
+    name: Microsoft Graph API
+    kind: rest api
+    category: Integration
+    icon: microsoft
+    what: One REST API for Microsoft 365 data such as users, mail, calendars, Teams, files and SharePoint.
+    use_when: Another system reads or writes Microsoft 365 data or sends Teams messages.
+    avoid_when: Dynamics 365 business records (use the Dataverse Web API).
+    connects_with: [microsoft/m365, microsoft/teams, microsoft/sharepoint, azure/entra-id]
+    docs: https://learn.microsoft.com/en-us/graph/overview
+    checked: 2026-11
+
+  # ── ServiceNow ──────────────────────────────────────────────────────────────
+  servicenow/itsm:
+    name: ServiceNow ITSM
+    kind: it service mgmt
+    category: Clouds & products
+    icon: lucide:ticket
+    what: IT service management for incidents, requests, problems, changes and the service catalog.
+    use_when: Internal IT and employee support with SLAs, approvals and change control.
+    avoid_when: External customer support (use a customer service product).
+    connects_with: [servicenow/integration-hub, salesforce/service-cloud, atlassian/jira, azure/entra-id]
+    docs: https://www.servicenow.com/docs/bundle/zurich-it-service-management/page/product/it-service-management/reference/r_ITServiceManagement.html
+    checked: 2026-11
+  servicenow/integration-hub:
+    name: ServiceNow Integration Hub
+    kind: integration
+    category: Integration
+    icon: lucide:plug
+    what: Reusable connectors (spokes) and integration steps for ServiceNow flows.
+    use_when: ServiceNow workflows call other systems, such as creating accounts or updating tickets elsewhere.
+    avoid_when: Integrations between other systems that don't involve ServiceNow.
+    connects_with: [servicenow/itsm, mulesoft/process-api, generic/api]
+    docs: https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/integrationhub.html
+    checked: 2026-11
+
+  # ── Workday ─────────────────────────────────────────────────────────────────
+  workday/hcm:
+    name: Workday HCM
+    kind: hcm
+    category: Clouds & products
+    icon: lucide:users
+    what: Cloud HR for workers, organisations, positions, compensation and absence.
+    use_when: The system of record for employees and the org structure.
+    avoid_when: Identity and access decisions (feed an identity provider from it instead).
+    connects_with: [workday/web-services, azure/entra-id, mulesoft/system-api]
+    docs: https://www.workday.com/en-us/products/human-capital-management/overview.html
+    checked: 2026-11
+  workday/web-services:
+    name: Workday Web Services
+    kind: soap/rest api
+    category: Integration
+    icon: lucide:file-code
+    what: Workday's public SOAP and REST APIs, plus report-as-a-service feeds for custom extracts.
+    use_when: Read or write Workday data from an integration platform or another system.
+    avoid_when: Joiner-mover-leaver identity sync that a prebuilt connector already covers.
+    connects_with: [workday/hcm, mulesoft/system-api]
+    docs: https://community.workday.com/sites/default/files/file-hosting/productionapi/index.html
+    checked: 2026-11
+
+  # ── Oracle ──────────────────────────────────────────────────────────────────
+  oracle/fusion-erp:
+    name: Oracle Fusion Cloud ERP
+    kind: erp
+    category: Clouds & products
+    icon: oracle
+    what: Oracle's cloud ERP for finance, procurement, projects and supply chain.
+    use_when: The system of record for financials and purchasing in a large enterprise.
+    avoid_when: Small companies with simple finance needs (NetSuite or a lighter ERP fits).
+    connects_with: [mulesoft/system-api, salesforce/sales-cloud]
+    docs: https://docs.oracle.com/en/cloud/saas/financials/
+    checked: 2026-11
+  oracle/netsuite:
+    name: Oracle NetSuite
+    kind: erp
+    category: Clouds & products
+    icon: oracle
+    what: Cloud ERP for mid-sized companies, covering financials, orders, inventory and billing.
+    use_when: One ERP for finance and order-to-cash in a growing company.
+    avoid_when: Very large, multi-entity enterprises with complex manufacturing.
+    connects_with: [mulesoft/system-api, salesforce/sales-cloud, hubspot/crm]
+    docs: https://docs.oracle.com/en/cloud/saas/netsuite/
+    checked: 2026-11
+
+  # ── Other SaaS ──────────────────────────────────────────────────────────────
+  hubspot/crm:
+    name: HubSpot CRM
+    kind: crm
+    category: Clouds & products
+    icon: hubspot
+    what: CRM with marketing, sales and service hubs for contacts, companies and deals.
+    use_when: Inbound marketing and sales for small and mid-sized teams.
+    avoid_when: Complex enterprise processes, territories or heavy customisation.
+    connects_with: [oracle/netsuite, zendesk/support, generic/webhook]
+    docs: https://developers.hubspot.com/docs/api/crm/understanding-the-crm
+    checked: 2026-11
+  zendesk/support:
+    name: Zendesk Support
+    kind: customer service
+    category: Clouds & products
+    icon: zendesk
+    what: Ticketing for customer support across email, chat, phone and help center.
+    use_when: Customer support teams that need a ready-made helpdesk.
+    avoid_when: Service processes tightly bound to CRM records and automation in another platform.
+    connects_with: [hubspot/crm, atlassian/jira, salesforce/sales-cloud]
+    docs: https://developer.zendesk.com/api-reference/ticketing/introduction/
+    checked: 2026-11
+  atlassian/jira:
+    name: Jira
+    kind: work tracking
+    category: Clouds & products
+    icon: jira
+    what: Issue and project tracking for software and business teams.
+    use_when: Escalate customer or IT tickets to engineering as bugs or tasks.
+    avoid_when: Customer-facing support or ITSM with SLAs (use a service desk product).
+    connects_with: [servicenow/itsm, zendesk/support, salesforce/service-cloud]
+    docs: https://www.atlassian.com/software/jira
+    checked: 2026-11

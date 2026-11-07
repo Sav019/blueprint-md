@@ -1,0 +1,280 @@
+# Data platform building blocks for blueprint-md: warehouses, lakehouses, streaming, ingestion, orchestration and BI.
+# Confluent and Fivetran have no logo in the public icon libraries, so their blocks use the Kafka logo or pictograms.
+# Keep entries short and stable; numbers that change (limits, credits, pricing) belong behind the docs link.
+
+title: Data platforms
+entries:
+
+  # ── Snowflake ───────────────────────────────────────────────────────────────
+  snowflake/account:
+    name: Snowflake Account
+    kind: data cloud
+    category: Structure
+    icon: snowflake
+    what: One Snowflake account in one cloud region, holding databases, warehouses, users and roles.
+    use_when: Use it as a group around the Snowflake databases, warehouses and pipelines it holds.
+    avoid_when: Don't draw several accounts as one; cross-account or cross-region needs replication or sharing.
+    docs: https://docs.snowflake.com/en/user-guide/intro-key-concepts
+    checked: 2026-11
+  snowflake/warehouse:
+    name: Snowflake Virtual Warehouse
+    kind: sql compute
+    category: Compute
+    icon: snowflake
+    what: A compute cluster that runs queries and loads; scales and suspends independently of storage.
+    use_when: Separate warehouses per workload (loading, transformation, BI) so they don't slow each other down.
+    avoid_when: Always-on sizing for spiky use; let it auto-suspend instead.
+    connects_with: [snowflake/account, dbt/cloud, microsoft/power-bi, salesforce/tableau]
+    docs: https://docs.snowflake.com/en/user-guide/warehouses
+    checked: 2026-11
+  snowflake/snowpipe:
+    name: Snowpipe
+    kind: data ingestion
+    category: Integration
+    icon: snowflake
+    what: Loads files continuously into tables as they land in a stage, or rows directly via Snowpipe Streaming.
+    use_when: Near-real-time loading from cloud storage or Kafka without scheduling batch loads.
+    avoid_when: Large one-off historical loads (a bulk COPY is simpler).
+    connects_with: [aws/s3, azure/storage, gcp/cloud-storage, confluent/kafka-connect]
+    docs: https://docs.snowflake.com/en/user-guide/data-load-snowpipe-intro
+    checked: 2026-11
+  snowflake/streams-tasks:
+    name: Snowflake Streams & Tasks
+    kind: in-db pipelines
+    category: Integration
+    icon: lucide:list-checks
+    what: Streams track row changes on a table; tasks run SQL on a schedule or when a stream has data.
+    use_when: Incremental transformations that live entirely inside Snowflake.
+    avoid_when: Pipelines that span many systems (use an orchestrator) or large dbt projects.
+    connects_with: [snowflake/warehouse, snowflake/snowpipe]
+    docs: https://docs.snowflake.com/en/user-guide/data-pipelines-intro
+    checked: 2026-11
+  snowflake/data-sharing:
+    name: Snowflake Secure Data Sharing
+    kind: data sharing
+    category: Integration
+    icon: lucide:share-2
+    what: Gives other accounts live, read-only access to selected data without copying it; also the basis of the Marketplace.
+    use_when: Sharing data with partners, subsidiaries or Salesforce Data Cloud (zero copy) without ETL.
+    avoid_when: Consumers outside Snowflake that need files or an API.
+    connects_with: [snowflake/account, salesforce/data-cloud]
+    docs: https://docs.snowflake.com/en/user-guide/data-sharing-intro
+    checked: 2026-11
+  snowflake/snowpark:
+    name: Snowpark
+    kind: code in warehouse
+    category: Compute
+    icon: snowflake
+    what: Runs Python, Java or Scala code (DataFrames, UDFs, stored procedures) inside Snowflake next to the data.
+    use_when: Data engineering or ML steps that SQL can't express, without moving data out.
+    avoid_when: Plain SQL transformations, or workloads that need GPUs and custom libraries outside the supported set.
+    connects_with: [snowflake/warehouse]
+    docs: https://docs.snowflake.com/en/developer-guide/snowpark/index
+    checked: 2026-11
+  snowflake/cortex:
+    name: Snowflake Cortex AI
+    kind: ai service
+    category: Analytics & AI
+    icon: lucide:sparkles
+    what: Managed LLM functions, search and natural-language-to-SQL that run inside Snowflake's governance boundary.
+    use_when: Summaries, classification, search or chat over data already in Snowflake.
+    avoid_when: Custom model training or serving (use a dedicated ML platform).
+    connects_with: [snowflake/warehouse]
+    docs: https://docs.snowflake.com/en/guides-overview-ai-features
+    checked: 2026-11
+
+  # ── Databricks ──────────────────────────────────────────────────────────────
+  databricks/workspace:
+    name: Databricks Workspace
+    kind: lakehouse platform
+    category: Structure
+    icon: databricks
+    what: One Databricks environment with notebooks, jobs, compute and SQL warehouses, running in your cloud account.
+    use_when: Use it as a group around the Databricks compute, jobs and tables it holds.
+    avoid_when: Don't treat workspaces as the security boundary for data; governance lives in Unity Catalog.
+    docs: https://docs.databricks.com/aws/en/workspace/
+    checked: 2026-11
+  databricks/delta-lake:
+    name: Delta Lake
+    kind: lakehouse tables
+    category: Storage & databases
+    icon: databricks
+    what: Open table format on cloud object storage with ACID transactions, schema enforcement and time travel.
+    use_when: A single copy of data for both data engineering, BI and ML (the lakehouse).
+    avoid_when: Low-latency transactional workloads (use an operational database).
+    connects_with: [aws/s3, azure/storage, gcp/cloud-storage, databricks/unity-catalog]
+    docs: https://docs.databricks.com/aws/en/delta/
+    checked: 2026-11
+  databricks/unity-catalog:
+    name: Unity Catalog
+    kind: data governance
+    category: Security & identity
+    icon: lucide:shield-check
+    what: Central catalog for tables, files, models and permissions, with lineage and auditing across workspaces.
+    use_when: Governing who can see which data across several workspaces and teams.
+    avoid_when: Data that lives only outside Databricks and is governed elsewhere.
+    connects_with: [databricks/workspace, databricks/delta-lake, databricks/delta-sharing]
+    docs: https://docs.databricks.com/aws/en/data-governance/unity-catalog/
+    checked: 2026-11
+  databricks/jobs:
+    name: Lakeflow Jobs
+    kind: orchestration
+    category: Integration
+    icon: lucide:workflow
+    what: Schedules and runs notebooks, SQL, pipelines and dbt tasks inside Databricks (formerly Workflows).
+    use_when: Orchestrating pipelines that run mainly on Databricks.
+    avoid_when: Pipelines that coordinate many external systems (a general orchestrator like Airflow fits better).
+    connects_with: [databricks/workspace, databricks/delta-lake, dbt/core]
+    docs: https://docs.databricks.com/aws/en/jobs/
+    checked: 2026-11
+  databricks/model-serving:
+    name: Databricks Model Serving
+    kind: model serving
+    category: Analytics & AI
+    icon: databricks
+    what: Serves custom models, foundation models and AI agents as REST endpoints with autoscaling.
+    use_when: Real-time predictions or LLM calls governed alongside the data in Unity Catalog.
+    avoid_when: Batch scoring (run it as a job instead).
+    connects_with: [databricks/unity-catalog, salesforce/data-cloud]
+    docs: https://docs.databricks.com/aws/en/machine-learning/model-serving/
+    checked: 2026-11
+  databricks/delta-sharing:
+    name: Delta Sharing
+    kind: data sharing
+    category: Integration
+    icon: lucide:share-2
+    what: Open protocol to share live tables with other platforms without copying; also used for zero-copy with Salesforce Data Cloud.
+    use_when: Sharing governed data with partners or other platforms, Databricks or not.
+    avoid_when: Writes back to the provider (shares are read-only).
+    connects_with: [databricks/unity-catalog, salesforce/data-cloud]
+    docs: https://docs.databricks.com/aws/en/delta-sharing/
+    checked: 2026-11
+
+  # ── Streaming ───────────────────────────────────────────────────────────────
+  confluent/cluster:
+    name: Confluent Cloud Kafka Cluster
+    kind: event streaming
+    category: Integration
+    icon: apachekafka
+    what: Managed Apache Kafka cluster that stores ordered, replayable event streams for many producers and consumers.
+    use_when: High-volume event streaming between many systems, with replay and several independent consumers.
+    avoid_when: A few simple queue messages between two services (a managed queue is simpler).
+    connects_with: [confluent/kafka-topic, confluent/kafka-connect, confluent/schema-registry]
+    docs: https://docs.confluent.io/cloud/current/overview.html
+    checked: 2026-11
+  confluent/kafka-topic:
+    name: Kafka Topic
+    kind: event stream
+    category: Integration
+    icon: lucide:list-ordered
+    what: A named, partitioned log of events; consumers read at their own pace and can replay.
+    use_when: Draw one per important event stream (orders, clicks, CDC) to show who produces and consumes it.
+    avoid_when: Request-reply calls that need an immediate answer.
+    connects_with: [confluent/cluster, confluent/flink, mulesoft/process-api]
+    docs: https://docs.confluent.io/kafka/introduction.html
+    checked: 2026-11
+  confluent/kafka-connect:
+    name: Kafka Connect
+    kind: connectors
+    category: Integration
+    icon: lucide:plug
+    what: Ready-made source and sink connectors that move data between Kafka and databases, SaaS apps and storage.
+    use_when: Streaming CDC from databases or landing topics in a warehouse without custom code.
+    avoid_when: Complex transformations in flight (use stream processing).
+    connects_with: [confluent/kafka-topic, aws/s3, gcp/bigquery, snowflake/snowpipe]
+    docs: https://docs.confluent.io/platform/current/connect/index.html
+    checked: 2026-11
+  confluent/schema-registry:
+    name: Schema Registry
+    kind: schema catalog
+    category: Integration
+    icon: lucide:file-json
+    what: Stores versioned Avro, JSON Schema or Protobuf schemas and checks that producers stay compatible.
+    use_when: Many teams share topics and must evolve event formats without breaking consumers.
+    avoid_when: A single producer and consumer owned by one team.
+    connects_with: [confluent/kafka-topic]
+    docs: https://docs.confluent.io/platform/current/schema-registry/index.html
+    checked: 2026-11
+  confluent/flink:
+    name: Apache Flink
+    kind: stream processing
+    category: Compute
+    icon: logos:apache-flink
+    what: Stateful stream processing (SQL, Java, Python) for joins, aggregations and enrichment on live events.
+    use_when: Transforming or joining streams in real time before they reach consumers.
+    avoid_when: Daily batch transformations (a warehouse with dbt is simpler).
+    connects_with: [confluent/kafka-topic]
+    docs: https://docs.confluent.io/cloud/current/flink/overview.html
+    checked: 2026-11
+
+  # ── Ingestion & transformation ──────────────────────────────────────────────
+  fivetran/connector:
+    name: Fivetran Connector
+    kind: managed elt
+    category: Integration
+    icon: lucide:cable
+    what: Managed connector that replicates data from a SaaS app or database into a warehouse, handling schema changes.
+    use_when: Loading many standard sources (Salesforce, ERP, databases) into a warehouse with no pipeline code.
+    avoid_when: Custom sources without a connector, or reverse sync back into operational systems.
+    connects_with: [snowflake/warehouse, databricks/delta-lake, gcp/bigquery, aws/redshift, dbt/cloud]
+    docs: https://fivetran.com/docs/getting-started
+    checked: 2026-11
+  airbyte/connection:
+    name: Airbyte Connection
+    kind: open-source elt
+    category: Integration
+    icon: airbyte
+    what: Open-source or cloud-hosted connector that syncs a source into a destination on a schedule.
+    use_when: Self-hosted ELT, or sources where you want to build or adapt the connector yourself.
+    avoid_when: Teams with no capacity to run and upgrade it (a fully managed service is less work).
+    connects_with: [snowflake/warehouse, databricks/delta-lake, gcp/bigquery, aws/redshift]
+    docs: https://docs.airbyte.com/
+    checked: 2026-11
+  dbt/cloud:
+    name: dbt Cloud
+    kind: transformation
+    category: Integration
+    icon: dbt
+    what: Hosted dbt with an IDE, scheduler, docs and lineage for SQL transformation projects.
+    use_when: Version-controlled, tested SQL models in the warehouse, run by a hosted scheduler.
+    avoid_when: Teams that already run dbt Core from their own orchestrator.
+    connects_with: [snowflake/warehouse, databricks/delta-lake, gcp/bigquery, aws/redshift]
+    docs: https://docs.getdbt.com/docs/cloud/about-cloud/dbt-cloud-features
+    checked: 2026-11
+  dbt/core:
+    name: dbt Core
+    kind: transformation
+    category: Integration
+    icon: dbt
+    what: Open-source command-line tool that builds and tests SQL models inside the warehouse.
+    use_when: Running transformations from your own orchestrator or CI pipeline.
+    avoid_when: Teams that want a hosted IDE and scheduler (dbt Cloud).
+    connects_with: [airflow/dag, snowflake/warehouse, databricks/delta-lake, gcp/bigquery]
+    docs: https://docs.getdbt.com/docs/core/installation-overview
+    checked: 2026-11
+
+  # ── Orchestration ───────────────────────────────────────────────────────────
+  airflow/dag:
+    name: Airflow DAG
+    kind: orchestration
+    category: Operations
+    icon: apacheairflow
+    what: A Python-defined workflow of tasks with dependencies, schedules and retries, run by Apache Airflow (self-hosted, Astronomer or a cloud service).
+    use_when: Coordinating batch pipelines across many systems in one place.
+    avoid_when: Event-driven or streaming work, or pipelines that live entirely in one platform's own scheduler.
+    connects_with: [dbt/core, fivetran/connector, snowflake/warehouse, databricks/jobs]
+    docs: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html
+    checked: 2026-11
+
+  # ── BI ──────────────────────────────────────────────────────────────────────
+  microsoft/power-bi:
+    name: Power BI
+    kind: analytics
+    category: Analytics & AI
+    icon: logos:microsoft-power-bi
+    what: Microsoft's reports, dashboards and semantic models, shared through the Power BI service and Microsoft Fabric.
+    use_when: Self-service BI for organizations already on Microsoft 365 and Azure.
+    avoid_when: Reporting that stays inside one operational app (its built-in reports are enough).
+    connects_with: [snowflake/warehouse, databricks/delta-lake, azure/synapse]
+    docs: https://learn.microsoft.com/en-us/power-bi/fundamentals/power-bi-overview
+    checked: 2026-11

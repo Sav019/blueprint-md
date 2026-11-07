@@ -1,0 +1,177 @@
+# Identity and security building blocks for blueprint-md: identity providers, secrets and sign-in protocols.
+# Microsoft Entra ID lives in azure.yaml (azure/entra-id); Cognito, IAM and cloud secret stores live in their cloud files.
+# Keep entries short and stable; numbers that change (limits, quotas, pricing) belong behind the docs link.
+
+title: Identity & security
+entries:
+
+  # ── Identity providers ──────────────────────────────────────────────────────
+  okta/workforce-identity:
+    name: Okta Workforce Identity
+    kind: identity provider
+    category: Security & identity
+    icon: okta
+    what: Okta's cloud service for employee sign-in, single sign-on, multi-factor login and user lifecycle.
+    use_when: Employees and contractors sign in once to many SaaS and internal apps, such as Salesforce.
+    avoid_when: Sign-up and login for your own customers (use a customer identity product).
+    connects_with: [protocol/saml-sso, protocol/oidc, protocol/scim, salesforce/connected-app, azure/entra-id]
+    docs: https://help.okta.com/en-us/content/index.htm
+    checked: 2026-11
+  okta/customer-identity:
+    name: Okta Customer Identity
+    kind: customer identity
+    category: Security & identity
+    icon: okta
+    what: Okta's customer identity offering for sign-up, login and profiles in your own apps; built on Auth0.
+    use_when: Customer-facing web or mobile apps that need branded login, social login and self-service.
+    avoid_when: Employee access to company apps (use Okta Workforce Identity or Entra ID).
+    connects_with: [auth0/tenant, protocol/oidc, generic/web-app, generic/mobile-app]
+    docs: https://auth0.com/docs
+    checked: 2026-11
+  auth0/tenant:
+    name: Auth0 Tenant
+    kind: customer identity
+    category: Security & identity
+    icon: auth0
+    what: An isolated Auth0 environment holding your users, applications, connections and login settings.
+    use_when: Login for your own web, mobile or API products, including social and enterprise connections.
+    avoid_when: Managing employee access across many SaaS apps (use a workforce identity provider).
+    connects_with: [protocol/oidc, protocol/oauth2-auth-code, protocol/oauth2-client-credentials, generic/web-app, generic/api]
+    docs: https://auth0.com/docs/get-started/auth0-overview/create-tenants
+    checked: 2026-11
+  ping/pingone:
+    name: PingOne
+    kind: identity provider
+    category: Security & identity
+    icon: lucide:fingerprint
+    what: Ping Identity's cloud identity platform for single sign-on, multi-factor login and user directories.
+    use_when: Enterprises already on Ping, or needing workforce and customer identity from one cloud vendor.
+    avoid_when: A small app that only needs a simple login (a lighter customer identity service is enough).
+    connects_with: [ping/pingfederate, protocol/saml-sso, protocol/oidc, protocol/scim, salesforce/connected-app]
+    docs: https://docs.pingidentity.com/pingone/
+    checked: 2026-11
+  ping/pingfederate:
+    name: PingFederate
+    kind: federation server
+    category: Security & identity
+    icon: lucide:fingerprint
+    what: Ping Identity's self-hosted federation server that links company directories to apps through SAML and OpenID Connect.
+    use_when: Large enterprises that must run federation on their own infrastructure, often next to Active Directory.
+    avoid_when: New cloud-first setups without on-premises constraints (a cloud identity provider is less work).
+    connects_with: [ping/pingone, protocol/saml-sso, protocol/oidc, salesforce/connected-app]
+    docs: https://docs.pingidentity.com/pingfederate/latest/
+    checked: 2026-11
+  microsoft/entra-external-id:
+    name: Microsoft Entra External ID
+    kind: customer identity
+    category: Security & identity
+    icon: azure:external id
+    what: Microsoft's identity service for customers and partners signing in to your apps; successor to Azure AD B2C.
+    use_when: Customer or partner login in apps that already run on Microsoft and Azure.
+    avoid_when: Employee sign-in (use Entra ID itself).
+    connects_with: [azure/entra-id, protocol/oidc, generic/web-app, generic/mobile-app]
+    docs: https://learn.microsoft.com/entra/external-id/
+    checked: 2026-11
+  keycloak/realm:
+    name: Keycloak Realm
+    kind: identity provider
+    category: Security & identity
+    icon: keycloak
+    what: A set of users, apps and login settings in Keycloak, the open-source identity server you host yourself.
+    use_when: Self-hosted single sign-on, data that must stay on your own servers, or no budget for a SaaS identity provider.
+    avoid_when: The team cannot run, patch and back up its own identity server.
+    connects_with: [protocol/oidc, protocol/saml-sso, protocol/oauth2-client-credentials, generic/web-app, generic/api]
+    docs: https://www.keycloak.org/docs/latest/server_admin/
+    checked: 2026-11
+
+  # ── Secrets ─────────────────────────────────────────────────────────────────
+  hashicorp/vault:
+    name: HashiCorp Vault
+    kind: secrets manager
+    category: Security & identity
+    icon: vault
+    what: Stores and hands out secrets, keys and certificates, including short-lived database and cloud credentials.
+    use_when: Secrets shared across several clouds or on-premises, or credentials that must be issued on demand and expire.
+    avoid_when: Everything runs in one cloud (its own secret store is simpler).
+    connects_with: [aws/secrets-manager, azure/key-vault, gcp/secret-manager, protocol/mtls, generic/service]
+    docs: https://developer.hashicorp.com/vault/docs
+    checked: 2026-11
+
+  # ── Protocols ───────────────────────────────────────────────────────────────
+  protocol/saml-sso:
+    name: SAML 2.0 SSO
+    kind: sso protocol
+    category: Protocols
+    icon: lucide:shield-check
+    what: XML-based standard where an identity provider sends a signed assertion so a user can sign in to an app.
+    use_when: Employee single sign-on into enterprise SaaS apps such as Salesforce, especially older ones.
+    avoid_when: Mobile apps, single-page apps or API access (use OpenID Connect and OAuth 2.0).
+    connects_with: [okta/workforce-identity, ping/pingone, azure/entra-id, salesforce/connected-app, generic/identity-provider]
+    docs: https://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0.html
+    checked: 2026-11
+  protocol/oidc:
+    name: OpenID Connect
+    kind: sso protocol
+    category: Protocols
+    icon: lucide:id-card
+    what: Identity layer on top of OAuth 2.0; the app gets an ID token that says who the user is.
+    use_when: User sign-in for web, mobile and single-page apps, and modern single sign-on.
+    avoid_when: Server-to-server calls with no user (use the OAuth 2.0 client credentials flow).
+    connects_with: [protocol/oauth2-auth-code, okta/workforce-identity, auth0/tenant, azure/entra-id, aws/cognito, generic/identity-provider]
+    docs: https://openid.net/specs/openid-connect-core-1_0.html
+    checked: 2026-11
+  protocol/oauth2-auth-code:
+    name: OAuth 2.0 Authorization Code
+    kind: oauth flow
+    category: Protocols
+    icon: lucide:key-round
+    what: OAuth 2.0 flow where the user logs in and consents, and the app gets tokens to call an API on their behalf; use it with PKCE.
+    use_when: An app calls an API as the signed-in user, such as a web app reading Salesforce data.
+    avoid_when: Back-end jobs with no user present (use client credentials or JWT bearer).
+    connects_with: [protocol/oidc, salesforce/connected-app, generic/web-app, generic/mobile-app, generic/api]
+    docs: https://datatracker.ietf.org/doc/html/rfc6749
+    checked: 2026-11
+  protocol/oauth2-client-credentials:
+    name: OAuth 2.0 Client Credentials
+    kind: oauth flow
+    category: Protocols
+    icon: lucide:key-round
+    what: OAuth 2.0 flow where a service signs in as itself with a client ID and secret and gets an access token.
+    use_when: Server-to-server API calls with no user, such as an integration job or middleware.
+    avoid_when: Actions that must run as a specific user, or clients that cannot keep a secret (browsers, mobile apps).
+    connects_with: [mulesoft/api-manager, salesforce/connected-app, salesforce/named-credential, generic/service, generic/api]
+    docs: https://datatracker.ietf.org/doc/html/rfc6749#section-4.4
+    checked: 2026-11
+  protocol/oauth2-jwt-bearer:
+    name: OAuth 2.0 JWT Bearer
+    kind: oauth flow
+    category: Protocols
+    icon: lucide:file-key
+    what: OAuth 2.0 flow where a service signs a JWT with its private key and trades it for an access token.
+    use_when: Server-to-server calls without a stored password or secret, such as a back end calling Salesforce as an integration user.
+    avoid_when: Interactive user login (use authorization code with OpenID Connect).
+    connects_with: [salesforce/connected-app, salesforce/named-credential, hashicorp/vault, generic/service]
+    docs: https://datatracker.ietf.org/doc/html/rfc7523
+    checked: 2026-11
+  protocol/scim:
+    name: SCIM Provisioning
+    kind: user provisioning
+    category: Protocols
+    icon: lucide:users
+    what: Standard REST API for creating, updating and deactivating users and groups from an identity provider in apps.
+    use_when: Accounts in apps should follow the central directory automatically, including deactivation when people leave.
+    avoid_when: Sign-in itself (SCIM only manages accounts; pair it with SAML or OpenID Connect).
+    connects_with: [okta/workforce-identity, ping/pingone, azure/entra-id, generic/identity-provider]
+    docs: https://datatracker.ietf.org/doc/html/rfc7644
+    checked: 2026-11
+  protocol/mtls:
+    name: Mutual TLS
+    kind: transport auth
+    category: Protocols
+    icon: lucide:lock
+    what: Both sides of a connection present certificates, so the server also knows which client is calling.
+    use_when: Machine-to-machine traffic between partners, gateways and services that must prove their identity at the connection level.
+    avoid_when: Browser or end-user traffic, or teams without a way to issue and rotate certificates.
+    connects_with: [mulesoft/api-manager, hashicorp/vault, generic/api, generic/service]
+    docs: https://datatracker.ietf.org/doc/html/rfc8705
+    checked: 2026-11

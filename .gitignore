@@ -5,3 +5,6 @@ __pycache__/
 .DS_Store
 .sf/
 .sfdx/
+
+# Local org architectures (not for publishing)
+private/

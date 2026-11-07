@@ -151,6 +151,188 @@ Use a building block on a component with `type:`; its name, role, icon and descr
 |---|---|---|---|---|---|
 | `azure/monitor` | Azure Monitor | Metrics, logs, alerts and dashboards for Azure resources and applications, including Application Insights. | Every production system; draw it when alerting or log flows matter. |  | [docs](https://learn.microsoft.com/azure/azure-monitor/) (2026-11) |
 
+## Data platforms
+
+### Structure
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `snowflake/account` | Snowflake Account | One Snowflake account in one cloud region, holding databases, warehouses, users and roles. | Use it as a group around the Snowflake databases, warehouses and pipelines it holds. | Don't draw several accounts as one; cross-account or cross-region needs replication or sharing. | [docs](https://docs.snowflake.com/en/user-guide/intro-key-concepts) (2026-11) |
+| `databricks/workspace` | Databricks Workspace | One Databricks environment with notebooks, jobs, compute and SQL warehouses, running in your cloud account. | Use it as a group around the Databricks compute, jobs and tables it holds. | Don't treat workspaces as the security boundary for data; governance lives in Unity Catalog. | [docs](https://docs.databricks.com/aws/en/workspace/) (2026-11) |
+
+### Compute
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `snowflake/warehouse` | Snowflake Virtual Warehouse | A compute cluster that runs queries and loads; scales and suspends independently of storage. | Separate warehouses per workload (loading, transformation, BI) so they don't slow each other down. | Always-on sizing for spiky use; let it auto-suspend instead. | [docs](https://docs.snowflake.com/en/user-guide/warehouses) (2026-11) |
+| `snowflake/snowpark` | Snowpark | Runs Python, Java or Scala code (DataFrames, UDFs, stored procedures) inside Snowflake next to the data. | Data engineering or ML steps that SQL can't express, without moving data out. | Plain SQL transformations, or workloads that need GPUs and custom libraries outside the supported set. | [docs](https://docs.snowflake.com/en/developer-guide/snowpark/index) (2026-11) |
+| `confluent/flink` | Apache Flink | Stateful stream processing (SQL, Java, Python) for joins, aggregations and enrichment on live events. | Transforming or joining streams in real time before they reach consumers. | Daily batch transformations (a warehouse with dbt is simpler). | [docs](https://docs.confluent.io/cloud/current/flink/overview.html) (2026-11) |
+
+### Integration
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `snowflake/snowpipe` | Snowpipe | Loads files continuously into tables as they land in a stage, or rows directly via Snowpipe Streaming. | Near-real-time loading from cloud storage or Kafka without scheduling batch loads. | Large one-off historical loads (a bulk COPY is simpler). | [docs](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-intro) (2026-11) |
+| `snowflake/streams-tasks` | Snowflake Streams & Tasks | Streams track row changes on a table; tasks run SQL on a schedule or when a stream has data. | Incremental transformations that live entirely inside Snowflake. | Pipelines that span many systems (use an orchestrator) or large dbt projects. | [docs](https://docs.snowflake.com/en/user-guide/data-pipelines-intro) (2026-11) |
+| `snowflake/data-sharing` | Snowflake Secure Data Sharing | Gives other accounts live, read-only access to selected data without copying it; also the basis of the Marketplace. | Sharing data with partners, subsidiaries or Salesforce Data Cloud (zero copy) without ETL. | Consumers outside Snowflake that need files or an API. | [docs](https://docs.snowflake.com/en/user-guide/data-sharing-intro) (2026-11) |
+| `databricks/jobs` | Lakeflow Jobs | Schedules and runs notebooks, SQL, pipelines and dbt tasks inside Databricks (formerly Workflows). | Orchestrating pipelines that run mainly on Databricks. | Pipelines that coordinate many external systems (a general orchestrator like Airflow fits better). | [docs](https://docs.databricks.com/aws/en/jobs/) (2026-11) |
+| `databricks/delta-sharing` | Delta Sharing | Open protocol to share live tables with other platforms without copying; also used for zero-copy with Salesforce Data Cloud. | Sharing governed data with partners or other platforms, Databricks or not. | Writes back to the provider (shares are read-only). | [docs](https://docs.databricks.com/aws/en/delta-sharing/) (2026-11) |
+| `confluent/cluster` | Confluent Cloud Kafka Cluster | Managed Apache Kafka cluster that stores ordered, replayable event streams for many producers and consumers. | High-volume event streaming between many systems, with replay and several independent consumers. | A few simple queue messages between two services (a managed queue is simpler). | [docs](https://docs.confluent.io/cloud/current/overview.html) (2026-11) |
+| `confluent/kafka-topic` | Kafka Topic | A named, partitioned log of events; consumers read at their own pace and can replay. | Draw one per important event stream (orders, clicks, CDC) to show who produces and consumes it. | Request-reply calls that need an immediate answer. | [docs](https://docs.confluent.io/kafka/introduction.html) (2026-11) |
+| `confluent/kafka-connect` | Kafka Connect | Ready-made source and sink connectors that move data between Kafka and databases, SaaS apps and storage. | Streaming CDC from databases or landing topics in a warehouse without custom code. | Complex transformations in flight (use stream processing). | [docs](https://docs.confluent.io/platform/current/connect/index.html) (2026-11) |
+| `confluent/schema-registry` | Schema Registry | Stores versioned Avro, JSON Schema or Protobuf schemas and checks that producers stay compatible. | Many teams share topics and must evolve event formats without breaking consumers. | A single producer and consumer owned by one team. | [docs](https://docs.confluent.io/platform/current/schema-registry/index.html) (2026-11) |
+| `fivetran/connector` | Fivetran Connector | Managed connector that replicates data from a SaaS app or database into a warehouse, handling schema changes. | Loading many standard sources (Salesforce, ERP, databases) into a warehouse with no pipeline code. | Custom sources without a connector, or reverse sync back into operational systems. | [docs](https://fivetran.com/docs/getting-started) (2026-11) |
+| `airbyte/connection` | Airbyte Connection | Open-source or cloud-hosted connector that syncs a source into a destination on a schedule. | Self-hosted ELT, or sources where you want to build or adapt the connector yourself. | Teams with no capacity to run and upgrade it (a fully managed service is less work). | [docs](https://docs.airbyte.com/) (2026-11) |
+| `dbt/cloud` | dbt Cloud | Hosted dbt with an IDE, scheduler, docs and lineage for SQL transformation projects. | Version-controlled, tested SQL models in the warehouse, run by a hosted scheduler. | Teams that already run dbt Core from their own orchestrator. | [docs](https://docs.getdbt.com/docs/cloud/about-cloud/dbt-cloud-features) (2026-11) |
+| `dbt/core` | dbt Core | Open-source command-line tool that builds and tests SQL models inside the warehouse. | Running transformations from your own orchestrator or CI pipeline. | Teams that want a hosted IDE and scheduler (dbt Cloud). | [docs](https://docs.getdbt.com/docs/core/installation-overview) (2026-11) |
+
+### Analytics & AI
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `snowflake/cortex` | Snowflake Cortex AI | Managed LLM functions, search and natural-language-to-SQL that run inside Snowflake's governance boundary. | Summaries, classification, search or chat over data already in Snowflake. | Custom model training or serving (use a dedicated ML platform). | [docs](https://docs.snowflake.com/en/guides-overview-ai-features) (2026-11) |
+| `databricks/model-serving` | Databricks Model Serving | Serves custom models, foundation models and AI agents as REST endpoints with autoscaling. | Real-time predictions or LLM calls governed alongside the data in Unity Catalog. | Batch scoring (run it as a job instead). | [docs](https://docs.databricks.com/aws/en/machine-learning/model-serving/) (2026-11) |
+| `microsoft/power-bi` | Power BI | Microsoft's reports, dashboards and semantic models, shared through the Power BI service and Microsoft Fabric. | Self-service BI for organizations already on Microsoft 365 and Azure. | Reporting that stays inside one operational app (its built-in reports are enough). | [docs](https://learn.microsoft.com/en-us/power-bi/fundamentals/power-bi-overview) (2026-11) |
+
+### Storage & databases
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `databricks/delta-lake` | Delta Lake | Open table format on cloud object storage with ACID transactions, schema enforcement and time travel. | A single copy of data for both data engineering, BI and ML (the lakehouse). | Low-latency transactional workloads (use an operational database). | [docs](https://docs.databricks.com/aws/en/delta/) (2026-11) |
+
+### Security & identity
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `databricks/unity-catalog` | Unity Catalog | Central catalog for tables, files, models and permissions, with lineage and auditing across workspaces. | Governing who can see which data across several workspaces and teams. | Data that lives only outside Databricks and is governed elsewhere. | [docs](https://docs.databricks.com/aws/en/data-governance/unity-catalog/) (2026-11) |
+
+### Operations
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `airflow/dag` | Airflow DAG | A Python-defined workflow of tasks with dependencies, schedules and retries, run by Apache Airflow (self-hosted, Astronomer or a cloud service). | Coordinating batch pipelines across many systems in one place. | Event-driven or streaming work, or pipelines that live entirely in one platform's own scheduler. | [docs](https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dags.html) (2026-11) |
+
+## Developer & web platforms
+
+### Compute
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `kubernetes/cluster` | Kubernetes Cluster | A group of machines that runs and schedules containers, self-managed or as a cloud service. | Many services that need the same deployment, scaling and networking model on any cloud. | A few services that a container platform or functions can run with far less operations work. | [docs](https://kubernetes.io/docs/concepts/overview/) (2026-11) |
+| `kubernetes/deployment` | Kubernetes Deployment | Keeps a set of identical pods (one or more containers each) running and rolls out new versions. | Show one stateless service inside a cluster and how many copies of it run. | Databases and other stateful workloads (use a StatefulSet or a managed service). | [docs](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) (2026-11) |
+| `docker/container` | Docker Container | An application packaged with its runtime and dependencies as an image, stored in a registry such as Docker Hub. | The same build must run the same way on laptops, CI and any container platform. | Code that a functions platform can run directly without a custom image. | [docs](https://docs.docker.com/get-started/docker-overview/) (2026-11) |
+| `cloudflare/workers` | Cloudflare Workers | Runs JavaScript, TypeScript or WebAssembly in Cloudflare's network close to the user. | Low-latency APIs, request rewriting, auth checks or personalization at the edge. | Long-running jobs or code that needs a full operating system or large native libraries. | [docs](https://developers.cloudflare.com/workers/) (2026-11) |
+
+### Networking & delivery
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `kubernetes/ingress` | Kubernetes Ingress | Routes HTTP and HTTPS traffic from outside the cluster to services inside it. | Several services behind one hostname or load balancer, with TLS and path-based routing. | Non-HTTP traffic, or new clusters that standardize on the Gateway API. | [docs](https://kubernetes.io/docs/concepts/services-networking/ingress/) (2026-11) |
+| `cloudflare/cdn` | Cloudflare CDN & WAF | Global proxy in front of a site that caches content, blocks attacks and absorbs DDoS traffic. | Public websites and APIs that need speed, TLS and protection in front of any origin. | Internal-only systems that are never reached from the internet. | [docs](https://developers.cloudflare.com/cache/) (2026-11) |
+
+### App platform
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `vercel/project` | Vercel | Builds and hosts web frontends from Git, with serverless and edge functions next to them. | Next.js or other modern web frontends that want preview deployments per pull request. | Long-running backends, background workers or heavy compute. | [docs](https://vercel.com/docs) (2026-11) |
+| `netlify/site` | Netlify | Builds and hosts static and server-rendered sites from Git, with serverless functions and forms. | Marketing sites, documentation and Jamstack frontends with preview deployments. | Long-running backends, background workers or heavy compute. | [docs](https://docs.netlify.com/) (2026-11) |
+| `supabase/project` | Supabase | Managed Postgres with authentication, file storage, realtime updates and edge functions in one project. | Web and mobile apps that want a relational backend and login without running servers. | Systems that already have their own identity provider and database platform. | [docs](https://supabase.com/docs) (2026-11) |
+
+### Storage & databases
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `cloudflare/r2` | Cloudflare R2 | S3-compatible object storage without egress fees. | Files, media and backups that are read often from the internet or from other clouds. | Workloads that rely on features only one cloud's native object storage offers. | [docs](https://developers.cloudflare.com/r2/) (2026-11) |
+| `cloudflare/d1` | Cloudflare D1 | Serverless SQLite database built for Workers. | Small relational data close to Workers, such as settings, sessions or per-tenant databases. | Large, write-heavy or analytical databases that need a full Postgres or MySQL server. | [docs](https://developers.cloudflare.com/d1/) (2026-11) |
+| `postgresql/database` | PostgreSQL | Open-source relational database, self-managed or run by any cloud or platform provider. | Relational data with transactions and joins, when the engine matters more than the host. | Very large key-value or document workloads where a NoSQL store fits better. | [docs](https://www.postgresql.org/docs/) (2026-11) |
+| `mongodb/atlas` | MongoDB Atlas | Managed MongoDB document database on AWS, Azure or Google Cloud, with search and vector search. | Flexible JSON-like records that change shape often, or one database across several clouds. | Highly relational data with many joins and strict cross-record transactions. | [docs](https://www.mongodb.com/docs/atlas/) (2026-11) |
+| `redis/cloud` | Redis Cloud | Managed Redis for caching, sessions, rate limits, queues and pub/sub. | Fast reads of hot data, or short-lived shared state between service instances. | The only copy of important data that must survive every failure. | [docs](https://redis.io/docs/latest/operate/rc/) (2026-11) |
+| `elastic/cloud` | Elastic Cloud | Managed Elasticsearch and Kibana for full-text search, log analytics and observability. | Search across large text collections, or central log search and dashboards. | The main transactional database, or simple search a hosted search API covers. | [docs](https://www.elastic.co/docs/deploy-manage/deploy/elastic-cloud) (2026-11) |
+
+### Integration
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `algolia/search` | Algolia | Hosted search and discovery API with typo tolerance, facets and ranking rules. | Fast search-as-you-type in a web shop, documentation site or app. | Log analytics or search over data that must never leave your own infrastructure. | [docs](https://www.algolia.com/doc/) (2026-11) |
+| `stripe/payments` | Stripe Payments | Accepts card and local payment methods, subscriptions and invoices through an API and hosted pages. | Online checkout or recurring billing without handling raw card data yourself; confirm payments through Stripe webhooks. | Payment flows tied to a provider your company or region already requires. | [docs](https://docs.stripe.com/payments) (2026-11) |
+| `twilio/messaging` | Twilio | API for sending and receiving SMS, WhatsApp messages and phone calls, plus one-time codes. | Notifications, two-factor codes or support conversations over phone and messaging. | Bulk marketing to users who have not opted in, or channels your users do not use. | [docs](https://www.twilio.com/docs/messaging) (2026-11) |
+| `sendgrid/email` | Twilio SendGrid | Email delivery API and SMTP relay for transactional and marketing email. | High-volume transactional email, or one provider for both transactional and marketing mail. | A few emails a day that the platform you already use can send. | [docs](https://www.twilio.com/docs/sendgrid) (2026-11) |
+
+### Automation & code
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `github/repo` | GitHub Repository | Git repository with pull requests, code review, issues and access control. | Show where the source code lives and which deployments it triggers. |  | [docs](https://docs.github.com/en/repositories) (2026-11) |
+| `github/actions` | GitHub Actions | Runs build, test and deploy workflows on events in a GitHub repository. | Code already lives on GitHub and you want CI/CD next to it. | Deploys that must run only inside a private network without self-hosted runners. | [docs](https://docs.github.com/en/actions) (2026-11) |
+| `gitlab/ci-cd` | GitLab CI/CD | Pipelines defined next to the code in a GitLab repository, on shared or self-hosted runners. | Code lives on GitLab, or one self-hosted platform for code, CI/CD and registry is wanted. |  | [docs](https://docs.gitlab.com/ci/) (2026-11) |
+
+### Operations
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `datadog/monitoring` | Datadog | Metrics, logs, traces and alerts across clouds, containers and services in one place. | Systems that span several clouds or platforms and need one view for on-call. | Small systems that a cloud's built-in monitoring already covers. | [docs](https://docs.datadoghq.com/) (2026-11) |
+| `sentry/errors` | Sentry | Captures errors and slow transactions from apps with stack traces and release context. | Web, mobile and backend apps where developers need to see and fix crashes quickly. | Infrastructure metrics and log retention (use a monitoring platform). | [docs](https://docs.sentry.io/) (2026-11) |
+
+### Analytics & AI
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `anthropic/claude-api` | Claude API | Anthropic's hosted API for Claude models, with tool use, vision and long context. | Agents, coding help, document analysis and other text tasks that need careful reasoning. | Data that must not leave your own infrastructure, or tasks a small rule or classifier solves. | [docs](https://docs.claude.com/) (2026-11) |
+| `openai/api` | OpenAI API | OpenAI's hosted API for GPT models, embeddings, image and speech models. | Text generation, embeddings, transcription or image tasks from application code. | Data that must not leave your own infrastructure, or tasks a small rule or classifier solves. | [docs](https://platform.openai.com/docs/) (2026-11) |
+
+## Enterprise SaaS
+
+### Clouds & products
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `sap/s4hana` | SAP S/4HANA | SAP's ERP suite for finance, procurement, sales orders, manufacturing and logistics, in the cloud or on premises. | The system of record for orders, invoices, materials and the general ledger. | Customer engagement and sales pipeline work (keep that in a CRM and sync the results). | [docs](https://help.sap.com/docs/SAP_S4HANA_ON-PREMISE) (2026-11) |
+| `sap/btp` | SAP BTP | SAP Business Technology Platform; runs SAP's integration, data, AI and extension services. | Use it as a group around SAP cloud services, or to build side-by-side extensions to S/4HANA. | General-purpose apps with no SAP data (a hyperscaler or Salesforce is simpler). | [docs](https://help.sap.com/docs/btp) (2026-11) |
+| `sap/successfactors` | SAP SuccessFactors | SAP's cloud HR suite for employee records, recruiting, onboarding, performance and learning. | The system of record for employees in an SAP-centred company. | Payroll and time details other systems don't need (sync only the fields they use). | [docs](https://help.sap.com/docs/SAP_SUCCESSFACTORS_PLATFORM) (2026-11) |
+| `sap/ariba` | SAP Ariba | Cloud procurement for sourcing, contracts, purchasing, supplier management and invoices. | Purchasing and supplier collaboration on a shared business network. | Simple purchase requests that the ERP's own purchasing handles. | [docs](https://help.sap.com/docs/ariba) (2026-11) |
+| `microsoft/m365` | Microsoft 365 | Microsoft's workplace suite with Outlook mail and calendar, Teams, SharePoint, OneDrive and Office apps. | Use it as a group around the workplace tools users already live in. | Business records with their own process (keep them in CRM, ERP or Dataverse). | [docs](https://learn.microsoft.com/en-us/microsoft-365/) (2026-11) |
+| `microsoft/teams` | Microsoft Teams | Chat, meetings and channels, extensible with apps, bots and notifications. | Notify people, run approvals or surface business records where they already chat. | The only copy of a decision or record (store it in the system of record). | [docs](https://learn.microsoft.com/en-us/microsoftteams/platform/) (2026-11) |
+| `microsoft/dynamics-365` | Dynamics 365 | Microsoft's business apps, notably Sales and Customer Service, built on Dataverse. | CRM and service processes in a Microsoft-centred company. | Running a second CRM next to an existing one without a clear split of ownership. | [docs](https://learn.microsoft.com/en-us/dynamics365/) (2026-11) |
+| `servicenow/itsm` | ServiceNow ITSM | IT service management for incidents, requests, problems, changes and the service catalog. | Internal IT and employee support with SLAs, approvals and change control. | External customer support (use a customer service product). | [docs](https://www.servicenow.com/docs/bundle/zurich-it-service-management/page/product/it-service-management/reference/r_ITServiceManagement.html) (2026-11) |
+| `workday/hcm` | Workday HCM | Cloud HR for workers, organisations, positions, compensation and absence. | The system of record for employees and the org structure. | Identity and access decisions (feed an identity provider from it instead). | [docs](https://www.workday.com/en-us/products/human-capital-management/overview.html) (2026-11) |
+| `oracle/fusion-erp` | Oracle Fusion Cloud ERP | Oracle's cloud ERP for finance, procurement, projects and supply chain. | The system of record for financials and purchasing in a large enterprise. | Small companies with simple finance needs (NetSuite or a lighter ERP fits). | [docs](https://docs.oracle.com/en/cloud/saas/financials/) (2026-11) |
+| `oracle/netsuite` | Oracle NetSuite | Cloud ERP for mid-sized companies, covering financials, orders, inventory and billing. | One ERP for finance and order-to-cash in a growing company. | Very large, multi-entity enterprises with complex manufacturing. | [docs](https://docs.oracle.com/en/cloud/saas/netsuite/) (2026-11) |
+| `hubspot/crm` | HubSpot CRM | CRM with marketing, sales and service hubs for contacts, companies and deals. | Inbound marketing and sales for small and mid-sized teams. | Complex enterprise processes, territories or heavy customisation. | [docs](https://developers.hubspot.com/docs/api/crm/understanding-the-crm) (2026-11) |
+| `zendesk/support` | Zendesk Support | Ticketing for customer support across email, chat, phone and help center. | Customer support teams that need a ready-made helpdesk. | Service processes tightly bound to CRM records and automation in another platform. | [docs](https://developer.zendesk.com/api-reference/ticketing/introduction/) (2026-11) |
+| `atlassian/jira` | Jira | Issue and project tracking for software and business teams. | Escalate customer or IT tickets to engineering as bugs or tasks. | Customer-facing support or ITSM with SLAs (use a service desk product). | [docs](https://www.atlassian.com/software/jira) (2026-11) |
+
+### Integration
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `sap/integration-suite` | SAP Integration Suite | SAP's integration platform on BTP; Cloud Integration runs the flows, with prebuilt content for SAP apps. | Integrations centred on SAP systems, especially with SAP's prebuilt packages. | The company already runs another integration platform for its non-SAP landscape. | [docs](https://help.sap.com/docs/integration-suite) (2026-11) |
+| `sap/event-mesh` | SAP Event Mesh | Managed message broker for SAP business events; Advanced Event Mesh is the larger, multi-cloud edition. | React in near real time to S/4HANA or other SAP events (order created, invoice posted). | Bulk data transfer or request-reply calls that need an immediate answer. | [docs](https://help.sap.com/docs/event-mesh) (2026-11) |
+| `sap/odata-api` | SAP OData API | Standard REST-style APIs for SAP business objects, published in the SAP Business Accelerator Hub. | Read or change S/4HANA records in real time from another system. | Large one-off data loads (use migration tools or file-based transfer). | [docs](https://api.sap.com/) (2026-11) |
+| `sap/idoc` | SAP IDoc | SAP's classic asynchronous document format for exchanging business data such as orders and master data. | Existing ERP integrations, EDI-style flows, or master data distribution that already uses IDocs. | New real-time integrations where an OData API or business event exists. | [docs](https://help.sap.com/docs/SAP_NETWEAVER_750/8f3819b0c24149b5959ab31070b64058/4ab074b6aa2b1fb9e10000000a42189c.html) (2026-11) |
+| `microsoft/graph-api` | Microsoft Graph API | One REST API for Microsoft 365 data such as users, mail, calendars, Teams, files and SharePoint. | Another system reads or writes Microsoft 365 data or sends Teams messages. | Dynamics 365 business records (use the Dataverse Web API). | [docs](https://learn.microsoft.com/en-us/graph/overview) (2026-11) |
+| `servicenow/integration-hub` | ServiceNow Integration Hub | Reusable connectors (spokes) and integration steps for ServiceNow flows. | ServiceNow workflows call other systems, such as creating accounts or updating tickets elsewhere. | Integrations between other systems that don't involve ServiceNow. | [docs](https://www.servicenow.com/docs/bundle/zurich-integrate-applications/page/administer/integrationhub/concept/integrationhub.html) (2026-11) |
+| `workday/web-services` | Workday Web Services | Workday's public SOAP and REST APIs, plus report-as-a-service feeds for custom extracts. | Read or write Workday data from an integration platform or another system. | Joiner-mover-leaver identity sync that a prebuilt connector already covers. | [docs](https://community.workday.com/sites/default/files/file-hosting/productionapi/index.html) (2026-11) |
+
+### Analytics & AI
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `sap/datasphere` | SAP Datasphere | SAP's cloud data warehouse and data fabric that keeps SAP business meaning (models, hierarchies). | Reporting and planning across SAP and non-SAP data with SAP semantics kept intact. | Analytics with little SAP data (a general cloud warehouse is simpler). | [docs](https://help.sap.com/docs/SAP_DATASPHERE) (2026-11) |
+
+### Storage & databases
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `microsoft/sharepoint` | SharePoint | Document libraries, lists and intranet sites with versioning and permissions. | Store and share contracts, files and team documents linked from business records. | Structured transactional data with relationships (use Dataverse or a database). | [docs](https://learn.microsoft.com/en-us/sharepoint/) (2026-11) |
+| `microsoft/dataverse` | Microsoft Dataverse | Managed business database with tables, security roles and APIs behind Dynamics 365 and Power Apps. | Store data for Power Platform apps and flows with row-level security. | High-volume telemetry or analytics workloads (use a database or warehouse). | [docs](https://learn.microsoft.com/en-us/power-apps/maker/data-platform/data-platform-intro) (2026-11) |
+
+### Automation & code
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `microsoft/power-automate` | Power Automate | Low-code workflows and desktop automation with connectors for Microsoft 365 and many SaaS apps. | Approvals, notifications and light integrations owned by business teams. | Core system-to-system integration that needs versioning, testing and monitoring. | [docs](https://learn.microsoft.com/en-us/power-automate/) (2026-11) |
+| `microsoft/power-apps` | Power Apps | Low-code canvas and model-driven apps on Dataverse and other data sources. | Internal forms and simple business apps built quickly by business teams. | Customer-facing or complex apps that need full control over code and UX. | [docs](https://learn.microsoft.com/en-us/power-apps/) (2026-11) |
+
 ## Generic
 
 ### People & clients
@@ -266,6 +448,33 @@ Use a building block on a component with `type:`; its name, role, icon and descr
 | Type | Name | What it is | Use when | Avoid when | Docs |
 |---|---|---|---|---|---|
 | `gcp/cloud-monitoring` | Cloud Monitoring & Logging | Metrics, logs, traces, alerts and dashboards for Google Cloud and applications. | Every production system; draw it when alerting or log flows matter. |  | [docs](https://cloud.google.com/monitoring) (2026-11) |
+
+## Identity & security
+
+### Security & identity
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `okta/workforce-identity` | Okta Workforce Identity | Okta's cloud service for employee sign-in, single sign-on, multi-factor login and user lifecycle. | Employees and contractors sign in once to many SaaS and internal apps, such as Salesforce. | Sign-up and login for your own customers (use a customer identity product). | [docs](https://help.okta.com/en-us/content/index.htm) (2026-11) |
+| `okta/customer-identity` | Okta Customer Identity | Okta's customer identity offering for sign-up, login and profiles in your own apps; built on Auth0. | Customer-facing web or mobile apps that need branded login, social login and self-service. | Employee access to company apps (use Okta Workforce Identity or Entra ID). | [docs](https://auth0.com/docs) (2026-11) |
+| `auth0/tenant` | Auth0 Tenant | An isolated Auth0 environment holding your users, applications, connections and login settings. | Login for your own web, mobile or API products, including social and enterprise connections. | Managing employee access across many SaaS apps (use a workforce identity provider). | [docs](https://auth0.com/docs/get-started/auth0-overview/create-tenants) (2026-11) |
+| `ping/pingone` | PingOne | Ping Identity's cloud identity platform for single sign-on, multi-factor login and user directories. | Enterprises already on Ping, or needing workforce and customer identity from one cloud vendor. | A small app that only needs a simple login (a lighter customer identity service is enough). | [docs](https://docs.pingidentity.com/pingone/) (2026-11) |
+| `ping/pingfederate` | PingFederate | Ping Identity's self-hosted federation server that links company directories to apps through SAML and OpenID Connect. | Large enterprises that must run federation on their own infrastructure, often next to Active Directory. | New cloud-first setups without on-premises constraints (a cloud identity provider is less work). | [docs](https://docs.pingidentity.com/pingfederate/latest/) (2026-11) |
+| `microsoft/entra-external-id` | Microsoft Entra External ID | Microsoft's identity service for customers and partners signing in to your apps; successor to Azure AD B2C. | Customer or partner login in apps that already run on Microsoft and Azure. | Employee sign-in (use Entra ID itself). | [docs](https://learn.microsoft.com/entra/external-id/) (2026-11) |
+| `keycloak/realm` | Keycloak Realm | A set of users, apps and login settings in Keycloak, the open-source identity server you host yourself. | Self-hosted single sign-on, data that must stay on your own servers, or no budget for a SaaS identity provider. | The team cannot run, patch and back up its own identity server. | [docs](https://www.keycloak.org/docs/latest/server_admin/) (2026-11) |
+| `hashicorp/vault` | HashiCorp Vault | Stores and hands out secrets, keys and certificates, including short-lived database and cloud credentials. | Secrets shared across several clouds or on-premises, or credentials that must be issued on demand and expire. | Everything runs in one cloud (its own secret store is simpler). | [docs](https://developer.hashicorp.com/vault/docs) (2026-11) |
+
+### Protocols
+
+| Type | Name | What it is | Use when | Avoid when | Docs |
+|---|---|---|---|---|---|
+| `protocol/saml-sso` | SAML 2.0 SSO | XML-based standard where an identity provider sends a signed assertion so a user can sign in to an app. | Employee single sign-on into enterprise SaaS apps such as Salesforce, especially older ones. | Mobile apps, single-page apps or API access (use OpenID Connect and OAuth 2.0). | [docs](https://docs.oasis-open.org/security/saml/Post2.0/sstc-saml-tech-overview-2.0.html) (2026-11) |
+| `protocol/oidc` | OpenID Connect | Identity layer on top of OAuth 2.0; the app gets an ID token that says who the user is. | User sign-in for web, mobile and single-page apps, and modern single sign-on. | Server-to-server calls with no user (use the OAuth 2.0 client credentials flow). | [docs](https://openid.net/specs/openid-connect-core-1_0.html) (2026-11) |
+| `protocol/oauth2-auth-code` | OAuth 2.0 Authorization Code | OAuth 2.0 flow where the user logs in and consents, and the app gets tokens to call an API on their behalf; use it with PKCE. | An app calls an API as the signed-in user, such as a web app reading Salesforce data. | Back-end jobs with no user present (use client credentials or JWT bearer). | [docs](https://datatracker.ietf.org/doc/html/rfc6749) (2026-11) |
+| `protocol/oauth2-client-credentials` | OAuth 2.0 Client Credentials | OAuth 2.0 flow where a service signs in as itself with a client ID and secret and gets an access token. | Server-to-server API calls with no user, such as an integration job or middleware. | Actions that must run as a specific user, or clients that cannot keep a secret (browsers, mobile apps). | [docs](https://datatracker.ietf.org/doc/html/rfc6749#section-4.4) (2026-11) |
+| `protocol/oauth2-jwt-bearer` | OAuth 2.0 JWT Bearer | OAuth 2.0 flow where a service signs a JWT with its private key and trades it for an access token. | Server-to-server calls without a stored password or secret, such as a back end calling Salesforce as an integration user. | Interactive user login (use authorization code with OpenID Connect). | [docs](https://datatracker.ietf.org/doc/html/rfc7523) (2026-11) |
+| `protocol/scim` | SCIM Provisioning | Standard REST API for creating, updating and deactivating users and groups from an identity provider in apps. | Accounts in apps should follow the central directory automatically, including deactivation when people leave. | Sign-in itself (SCIM only manages accounts; pair it with SAML or OpenID Connect). | [docs](https://datatracker.ietf.org/doc/html/rfc7644) (2026-11) |
+| `protocol/mtls` | Mutual TLS | Both sides of a connection present certificates, so the server also knows which client is calling. | Machine-to-machine traffic between partners, gateways and services that must prove their identity at the connection level. | Browser or end-user traffic, or teams without a way to issue and rotate certificates. | [docs](https://datatracker.ietf.org/doc/html/rfc8705) (2026-11) |
 
 ## Salesforce & MuleSoft
 
