@@ -1,0 +1,92 @@
+# blueprint-md example: Salesforce events processed on AWS
+title: Salesforce events on AWS
+summary: >
+  Opportunity changes leave Salesforce as Platform Events and arrive in Amazon EventBridge.
+  A Lambda function enriches them into DynamoDB for a customer API, and AppFlow copies
+  account data to S3 every night for analytics in Athena.
+
+groups:
+  sf:
+    label: Salesforce Org
+    icon: salesforce
+    color: blue
+  aws:
+    label: AWS Cloud
+    icon: aws:AWS-Cloud-logo
+    color: orange
+
+components:
+  sales:
+    type: salesforce/sales-cloud
+    kind: opportunities
+    group: sf
+    at: [0, 1]
+    about: Sales reps update opportunities; closed-won deals must reach the customer API within seconds.
+  events:
+    type: salesforce/platform-event
+    name: Deal Events
+    group: sf
+    at: [1, 1]
+    tech: Deal_Closed__e
+    about: Published by a record-triggered flow when an opportunity is closed-won.
+
+  bus:
+    type: aws/eventbridge
+    group: aws
+    at: [2.5, 1]
+    about: Receives Salesforce events through the partner event source and routes deal events by rule.
+  enrich:
+    type: aws/lambda
+    name: Enrich Deal
+    group: aws
+    at: [3.5, 1]
+    about: Adds product and region data and writes one item per deal.
+    code: services/enrich-deal
+  table:
+    type: aws/dynamodb
+    name: Deals Table
+    group: aws
+    at: [4.5, 1]
+  api:
+    type: aws/api-gateway
+    name: Customer API
+    group: aws
+    at: [4.5, 0]
+    about: Read-only API for the customer portal, backed by the deals table.
+  flow:
+    type: aws/appflow
+    group: aws
+    at: [2.5, 2]
+    about: Nightly full export of accounts to S3.
+  lake:
+    type: aws/s3
+    name: Data Lake
+    group: aws
+    at: [3.5, 2]
+  query:
+    type: aws/athena
+    group: aws
+    at: [4.5, 2]
+
+connections:
+  - sales -> events: closed-won
+    primary: true
+  - events -> bus: event relay
+    primary: true
+  - bus -> enrich: deal rule
+    primary: true
+  - enrich -> table: put item
+    primary: true
+  - api -> table: query
+  - sales ..> flow: nightly accounts
+  - flow -> lake: parquet
+  - query -> lake: SQL
+
+flows:
+  Deal closed: [sales, events, bus, enrich, table]
+
+decisions:
+  - title: EventBridge partner integration instead of a custom subscriber
+    status: proposed
+    decision: Use Salesforce's event relay to Amazon EventBridge rather than running a Pub/Sub API client.
+    why: No client to host or keep connected; routing rules live in AWS.

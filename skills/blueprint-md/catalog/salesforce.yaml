@@ -57,7 +57,7 @@ entries:
 
   salesforce/marketing-cloud:
     name: Marketing Cloud
-    kind: marketing automation
+    kind: marketing
     category: Clouds & products
     icon: salesforce
     what: Email, mobile and journey-based marketing automation.
@@ -81,7 +81,7 @@ entries:
 
   salesforce/data-cloud:
     name: Data Cloud
-    kind: customer data platform
+    kind: customer data
     category: Clouds & products
     icon: salesforce
     what: Ingests and unifies customer data from many sources into profiles, segments and calculated insights.
@@ -286,7 +286,7 @@ entries:
   # ── MuleSoft ────────────────────────────────────────────────────────────────
   mulesoft/anypoint:
     name: MuleSoft Anypoint Platform
-    kind: integration platform
+    kind: integration
     category: MuleSoft
     icon: lucide:workflow
     what: Integration platform to design, run and manage APIs and integrations.

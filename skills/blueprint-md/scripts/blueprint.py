@@ -5,6 +5,7 @@ Usage:
   python3 blueprint.py build architecture.yaml [--out DIR] [--png] [--offline]
   python3 blueprint.py check architecture.yaml
   python3 blueprint.py catalog [words…] [--write PATH] [--check] [--no-links]
+  python3 blueprint.py icons aws|azure|gcp [words…] [--update]
 
 build   writes <name>.html (self-contained diagram), ARCHITECTURE.md and, with --png,
         <name>.png + <name>-dark.png (needs Playwright: pip install playwright &&
@@ -12,6 +13,7 @@ build   writes <name>.html (self-contained diagram), ARCHITECTURE.md and, with -
 check   parses, lays out and routes the diagram and prints warnings without writing files
 catalog lists the building blocks (filter with words), writes them as a Markdown page,
         or checks entries, review dates and docs links
+icons   searches the official cloud icon packs (downloaded once, cached in ~/.cache/blueprint-md)
 
 Icons are fetched on first use and cached in .blueprint/icons/ next to the YAML file.
 Requires PyYAML (pip install pyyaml).
@@ -456,6 +458,8 @@ def fetch_icon(spec):
         data = devicon(name)
     elif prefix == "logos":
         data = logos(name)
+    elif prefix in PACK_SOURCES:
+        data = pack_icon(prefix, name)
     else:
         for source in (from_svgl, devicon, logos):
             try:
@@ -489,8 +493,9 @@ def resolve_icons(m, base_dir, offline, log):
             else:
                 try:
                     data, ext = fetch_icon(spec)
-                except Exception:
-                    log(f"warning: icon '{spec}' not found: showing a monogram. Try another name, "
+                except Exception as err:
+                    detail = f" ({err})" if isinstance(err, LookupError) and str(err) else ""
+                    log(f"warning: icon '{spec}' not found{detail}: showing a monogram. Try another name, "
                         f"'lucide:<icon>', a URL or a local .svg/.png path")
                     continue
                 cache.mkdir(parents=True, exist_ok=True)
@@ -498,6 +503,109 @@ def resolve_icons(m, base_dir, offline, log):
         mime = "image/png" if ext == "png" else "image/svg+xml"
         uris[spec] = f"data:{mime};base64,{base64.b64encode(data).decode()}"
     return uris
+
+
+# ── official cloud icon packs ─────────────────────────────────────────────────
+# Each vendor publishes an official icon package for architecture diagrams. The package is
+# downloaded once into a shared cache and indexed by name; icons are never stored in this repo.
+import io
+import os
+import zipfile
+
+PACK_SOURCES = {
+    "aws": {"label": "AWS Architecture Icons", "page": "https://aws.amazon.com/architecture/icons/",
+            "find": r"https://d1\.awsstatic\.com/[^\"'\s]+Icon-package[^\"'\s]*\.zip"},
+    "azure": {"label": "Azure Public Service Icons", "page": "https://learn.microsoft.com/en-us/azure/architecture/icons/",
+              "find": r"https://arch-center\.azureedge\.net/icons/Azure_Public_Service_Icons_V\d+\.zip"},
+    "gcp": {"label": "Google Cloud icons", "page": "https://cloud.google.com/icons",
+            "zips": ["https://services.google.com/fh/files/misc/core-products-icons.zip",
+                     "https://services.google.com/fh/files/misc/category-icons.zip"]},
+}
+VENDOR_WORDS = {"aws": ("aws", "amazon"), "azure": ("azure", "microsoft"), "gcp": ("google", "cloud", "gcp")}
+
+
+def pack_dir(vendor):
+    base = pathlib.Path(os.environ.get("XDG_CACHE_HOME") or pathlib.Path.home() / ".cache")
+    return base / "blueprint-md" / "packs" / vendor
+
+
+def norm(s):
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def index_pack(vendor, members):
+    """Map normalized icon names to zip member paths for one vendor's package."""
+    index = {}
+
+    def add(name, member, prefer=False):
+        for key in {norm(name), norm(re.sub(r"(?i)^(%s)[-_ ]+" % "|".join(VENDOR_WORDS[vendor]), "", name))}:
+            if key and (prefer or key not in index):
+                index[key] = member
+    for zip_name, member in members:
+        path = f"{zip_name}::{member}"
+        if not member.lower().endswith(".svg") or "__MACOSX" in member:
+            continue
+        file = member.rsplit("/", 1)[-1][:-4]
+        if vendor == "aws":
+            if m := re.match(r"Arch_(.+)_64$", file):                       # service icons
+                add(m[1], path, prefer=True)
+            elif m := re.match(r"(.+?)_32$", file):                         # group icons (AWS Cloud, Region, VPC…)
+                add(m[1], path)
+            elif m := re.match(r"Res_(.+?)_48(_Light)?$", file):            # general resources (user, client…)
+                add(m[1], path, prefer=bool(m[2]))
+        elif vendor == "azure":
+            if m := re.match(r"\d+-icon-service-(.+)$", file):
+                add(m[1].replace("-", " "), path)
+        elif vendor == "gcp":
+            folder = member.split("/")[-3] if member.count("/") >= 2 else file
+            add(folder, path, prefer="Unique" in member)
+    return index
+
+
+def load_pack(vendor, update=False, log=print):
+    folder = pack_dir(vendor)
+    index_file = folder / "index.json"
+    if index_file.exists() and not update:
+        return json.loads(index_file.read_text())
+    src = PACK_SOURCES[vendor]
+    urls = src.get("zips")
+    if not urls:
+        page = http_get(src["page"]).decode("utf-8", "replace")
+        found = sorted(set(re.findall(src["find"], page)))
+        if not found:
+            raise LookupError(f"could not find the {src['label']} download on {src['page']}")
+        urls = [max(found, key=lambda u: [int(n) for n in re.findall(r"\d+", u)])]
+    log(f"downloading {src['label']} (one time, cached in {folder})…")
+    folder.mkdir(parents=True, exist_ok=True)
+    members, meta = [], {"source": src["page"], "zips": []}
+    for i, url in enumerate(urls):
+        data = http_get(url)
+        (folder / f"pack{i}.zip").write_bytes(data)
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            members += [(f"pack{i}.zip", n) for n in z.namelist()]
+        meta["zips"].append(url)
+    index = {"meta": meta, "icons": index_pack(vendor, members)}
+    index_file.write_text(json.dumps(index, indent=1))
+    log(f"indexed {len(index['icons'])} {vendor} icon names")
+    return index
+
+
+def pack_icon(vendor, name):
+    icons = load_pack(vendor)["icons"]
+    key = norm(name)
+    path = icons.get(key) or icons.get(norm(re.sub(r"(?i)^(%s)[-_ ]+" % "|".join(VENDOR_WORDS[vendor]), "", name)))
+    if not path:
+        raise LookupError(f"no {vendor} icon named '{name}'{suggest(key, list(icons))}")
+    zip_name, member = path.split("::", 1)
+    with zipfile.ZipFile(pack_dir(vendor) / zip_name) as z:
+        return z.read(member)
+
+
+def pack_search(vendor, words):
+    icons = load_pack(vendor)["icons"]
+    names = sorted({p.split("::", 1)[1].rsplit("/", 1)[-1] for p in icons.values()})
+    wanted = [norm(w) for w in words]
+    return [n for n in names if all(w in norm(n) for w in wanted)]
 
 
 # ── HTML ──────────────────────────────────────────────────────────────────────
@@ -875,6 +983,8 @@ def catalog_check(entries, links, log):
         for field in ("name", "what"):
             if not e.get(field):
                 errors.append(f"{where}: missing '{field}'")
+        if len(str(e.get("kind", ""))) > 19:
+            warnings.append(f"{where}: kind '{e['kind']}' is longer than 19 characters and wraps under the icon")
         if not e["type"].startswith("generic/"):
             if not e.get("docs"):
                 warnings.append(f"{where}: no 'docs' link")
@@ -890,6 +1000,14 @@ def catalog_check(entries, links, log):
             if other not in entries:
                 errors.append(f"{where}: connects_with '{other}' is not in the catalog{suggest(other, list(entries))}")
     if links:
+        specs = sorted({e["icon"] for e in entries.values() if e.get("icon")})
+        log(f"checking {len(specs)} icons…")
+        for spec in specs:
+            try:
+                fetch_icon(spec)
+            except Exception as err:
+                users = ", ".join(e["type"] for e in entries.values() if e.get("icon") == spec)
+                errors.append(f"icon '{spec}' ({users}) not found" + (f": {err}" if str(err) else ""))
         urls = sorted({e["docs"] for e in entries.values() if e.get("docs")})
         log(f"checking {len(urls)} links…")
         for url, problem in check_links(urls, log).items():
@@ -909,15 +1027,31 @@ def main(argv=None):
     b.add_argument("--offline", action="store_true", help="use cached icons only")
     c = sub.add_parser("check", help="validate and lay out without writing files")
     c.add_argument("yaml", type=pathlib.Path)
+    ic = sub.add_parser("icons", help="search the official AWS / Azure / Google Cloud icon packs")
+    ic.add_argument("vendor", choices=sorted(PACK_SOURCES))
+    ic.add_argument("words", nargs="*", help="only show icon files containing these words")
+    ic.add_argument("--update", action="store_true", help="download the newest package again")
     k = sub.add_parser("catalog", help="list, document or check the building block catalog")
     k.add_argument("query", nargs="*", help="only show entries matching these words")
     k.add_argument("--file", action="append", default=[], type=pathlib.Path, help="extra catalog file to include")
     k.add_argument("--write", type=pathlib.Path, metavar="PATH", help="write the catalog as a Markdown page")
     k.add_argument("--check", action="store_true", help="validate entries, dates and links")
-    k.add_argument("--no-links", action="store_true", help="with --check: skip the link check")
+    k.add_argument("--no-links", action="store_true", help="with --check: skip the icon and link checks (offline)")
     args = ap.parse_args(argv)
 
     try:
+        if args.command == "icons":
+            try:
+                if args.update:
+                    load_pack(args.vendor, update=True)
+                hits = pack_search(args.vendor, args.words)
+            except (LookupError, OSError) as e:
+                raise BlueprintError(f"error: {e}")
+            for name in hits[:200]:
+                print(f"  {name}")
+            print(f"{len(hits)} icon file(s). Use them as 'icon: {args.vendor}:<name>' (the name part is enough, "
+                  f"e.g. {args.vendor}:{'lambda' if args.vendor == 'aws' else 'function apps' if args.vendor == 'azure' else 'bigquery'}).")
+            return 0
         if args.command == "catalog":
             entries = load_catalog(args.file)
             if args.check:

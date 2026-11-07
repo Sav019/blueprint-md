@@ -1,0 +1,311 @@
+# Google Cloud building blocks for blueprint-md.
+# Icons come from Google's official icon packages (`gcp:<name>`), downloaded once at build time.
+# Google publishes unique icons only for core products; every other product uses its category icon
+# (for example Pub/Sub uses "Integration Services"), as Google's icon guidelines describe.
+
+title: Google Cloud
+entries:
+
+  # ── Structure ───────────────────────────────────────────────────────────────
+  gcp/cloud:
+    name: Google Cloud
+    kind: cloud provider
+    category: Structure
+    icon: google-cloud
+    what: Google Cloud as a whole; use it as the outer group around Google Cloud resources.
+    use_when: Show which parts of the system run on Google Cloud.
+    docs: https://cloud.google.com/
+    checked: 2026-11
+  gcp/vpc:
+    name: VPC Network
+    kind: private network
+    category: Structure
+    icon: gcp:Networking
+    what: A global virtual network with regional subnets for your Google Cloud resources.
+    use_when: VMs, GKE clusters or private database connections.
+    avoid_when: Fully serverless designs with only managed endpoints.
+    docs: https://cloud.google.com/vpc
+    checked: 2026-11
+
+  # ── Compute ─────────────────────────────────────────────────────────────────
+  gcp/compute-engine:
+    name: Compute Engine
+    kind: virtual machines
+    category: Compute
+    icon: gcp:Compute Engine
+    what: Virtual machines with full control over the operating system and software.
+    use_when: Legacy or special software, custom runtimes, GPUs, steady workloads.
+    avoid_when: Plain web apps and APIs (Cloud Run needs far less operations work).
+    docs: https://cloud.google.com/products/compute
+    checked: 2026-11
+  gcp/cloud-run:
+    name: Cloud Run
+    kind: containers
+    category: Compute
+    icon: gcp:Cloud Run
+    what: Runs containers for web services, APIs and jobs; scales to zero and back automatically.
+    use_when: Most web apps, APIs and background jobs on Google Cloud.
+    avoid_when: Workloads that need special host access or always-on stateful processes.
+    connects_with: [gcp/cloud-sql, gcp/firestore, gcp/pubsub, gcp/cloud-storage, gcp/load-balancing]
+    docs: https://cloud.google.com/run
+    checked: 2026-11
+  gcp/cloud-run-functions:
+    name: Cloud Run functions
+    kind: functions
+    category: Compute
+    icon: gcp:Serverless Computing
+    what: Single-purpose functions that run on events or HTTP requests (formerly Cloud Functions).
+    use_when: Small event handlers, webhooks and glue code.
+    avoid_when: Larger services with many endpoints (deploy a Cloud Run service).
+    connects_with: [gcp/pubsub, gcp/cloud-storage, gcp/firestore]
+    docs: https://cloud.google.com/functions
+    checked: 2026-11
+  gcp/gke:
+    name: Google Kubernetes Engine
+    kind: managed kubernetes
+    category: Compute
+    icon: gcp:GKE
+    what: Managed Kubernetes, including an Autopilot mode that manages the nodes for you.
+    use_when: Teams standardized on Kubernetes or complex multi-service platforms.
+    avoid_when: A few services that Cloud Run can run with much less work.
+    docs: https://cloud.google.com/kubernetes-engine
+    checked: 2026-11
+
+  # ── Storage & databases ─────────────────────────────────────────────────────
+  gcp/cloud-storage:
+    name: Cloud Storage
+    kind: object storage
+    category: Storage & databases
+    icon: gcp:Cloud Storage
+    what: Durable object storage for files, backups, media and data lakes.
+    use_when: Files, documents, exports and raw data of any size.
+    avoid_when: Data that needs queries or transactions (use a database).
+    docs: https://cloud.google.com/storage
+    checked: 2026-11
+  gcp/cloud-sql:
+    name: Cloud SQL
+    kind: relational database
+    category: Storage & databases
+    icon: gcp:Cloud SQL
+    what: Managed PostgreSQL, MySQL and SQL Server with backups and high availability.
+    use_when: Relational data with transactions and joins.
+    avoid_when: Global scale with strong consistency across regions (Spanner fits better).
+    docs: https://cloud.google.com/sql
+    checked: 2026-11
+  gcp/alloydb:
+    name: AlloyDB for PostgreSQL
+    kind: postgres
+    category: Storage & databases
+    icon: gcp:AlloyDB
+    what: PostgreSQL-compatible database for demanding transactional and analytical workloads.
+    use_when: PostgreSQL workloads that outgrow Cloud SQL, or mixed transactional and analytical queries.
+    avoid_when: Small databases where Cloud SQL is cheaper.
+    docs: https://cloud.google.com/alloydb
+    checked: 2026-11
+  gcp/spanner:
+    name: Spanner
+    kind: global sql database
+    category: Storage & databases
+    icon: gcp:Cloud Spanner
+    what: Globally distributed relational database with strong consistency and very high availability.
+    use_when: Global applications that need SQL, scale and consistency at the same time.
+    avoid_when: Regional applications with moderate load (Cloud SQL is simpler and cheaper).
+    docs: https://cloud.google.com/spanner
+    checked: 2026-11
+  gcp/firestore:
+    name: Firestore
+    kind: document database
+    category: Storage & databases
+    icon: gcp:Databases
+    what: Serverless document database with real-time updates and offline support for apps.
+    use_when: Mobile and web apps, user-generated content, real-time features.
+    avoid_when: Complex joins, reporting or heavy aggregation (use BigQuery or SQL).
+    docs: https://cloud.google.com/firestore
+    checked: 2026-11
+  gcp/bigtable:
+    name: Bigtable
+    kind: wide-column nosql
+    category: Storage & databases
+    icon: gcp:Databases
+    what: Wide-column NoSQL database for very large, low-latency workloads such as time series.
+    use_when: Huge volumes of time-series, IoT or personalization data with key-based access.
+    avoid_when: Small data sets or relational queries.
+    docs: https://cloud.google.com/bigtable
+    checked: 2026-11
+  gcp/memorystore:
+    name: Memorystore
+    kind: in-memory cache
+    category: Storage & databases
+    icon: gcp:Databases
+    what: Managed Valkey, Redis and Memcached for caching and fast in-memory data.
+    use_when: Caching, sessions, rate limits and leaderboards.
+    avoid_when: As the only copy of important data.
+    docs: https://cloud.google.com/memorystore
+    checked: 2026-11
+
+  # ── Integration ─────────────────────────────────────────────────────────────
+  gcp/pubsub:
+    name: Pub/Sub
+    kind: messaging
+    category: Integration
+    icon: gcp:Integration Services
+    what: Global publish/subscribe messaging that decouples services and fans events out to many subscribers.
+    use_when: Event-driven architectures, streaming ingestion and asynchronous processing.
+    avoid_when: Synchronous request-reply calls.
+    connects_with: [gcp/cloud-run, gcp/cloud-run-functions, gcp/dataflow, gcp/bigquery]
+    docs: https://cloud.google.com/pubsub
+    checked: 2026-11
+  gcp/eventarc:
+    name: Eventarc
+    kind: event routing
+    category: Integration
+    icon: gcp:Integration Services
+    what: Routes events from Google Cloud services, SaaS and your own apps to Cloud Run, functions and workflows.
+    use_when: Reacting to changes in Google Cloud resources or third-party events without polling.
+    docs: https://cloud.google.com/eventarc
+    checked: 2026-11
+  gcp/workflows:
+    name: Workflows
+    kind: orchestration
+    category: Integration
+    icon: gcp:Integration Services
+    what: Serverless orchestration of services and APIs in defined steps, with retries and error handling.
+    use_when: Multi-step processes that call several services or APIs in order.
+    avoid_when: Simple one-step event handling.
+    docs: https://cloud.google.com/workflows
+    checked: 2026-11
+  gcp/cloud-tasks:
+    name: Cloud Tasks
+    kind: task queue
+    category: Integration
+    icon: gcp:Integration Services
+    what: Queues individual tasks for later execution with rate limiting and retries.
+    use_when: Controlled, rate-limited calls to a downstream service, such as an external API.
+    avoid_when: Fan-out to many subscribers (use Pub/Sub).
+    docs: https://cloud.google.com/tasks
+    checked: 2026-11
+  gcp/cloud-scheduler:
+    name: Cloud Scheduler
+    kind: cron
+    category: Integration
+    icon: gcp:Integration Services
+    what: Managed cron jobs that trigger HTTP endpoints, Pub/Sub topics or workflows.
+    use_when: Nightly syncs, reports and other scheduled jobs.
+    docs: https://cloud.google.com/scheduler
+    checked: 2026-11
+  gcp/apigee:
+    name: Apigee
+    kind: api management
+    category: Integration
+    icon: gcp:Apigee
+    what: Full API management with security, rate limiting, analytics and a developer portal.
+    use_when: APIs offered to partners or many teams that need governance and monetization.
+    avoid_when: A few internal APIs (a load balancer or API Gateway is enough).
+    docs: https://cloud.google.com/apigee
+    checked: 2026-11
+
+  # ── Networking ──────────────────────────────────────────────────────────────
+  gcp/load-balancing:
+    name: Cloud Load Balancing
+    kind: load balancer
+    category: Networking
+    icon: gcp:Networking
+    what: Global and regional load balancers for HTTP(S), TCP and UDP traffic.
+    use_when: One global entry point with HTTPS, routing and failover in front of your services.
+    docs: https://cloud.google.com/load-balancing
+    checked: 2026-11
+  gcp/cloud-cdn:
+    name: Cloud CDN
+    kind: cdn
+    category: Networking
+    icon: gcp:Networking
+    what: Caches content at Google's edge, in front of a global external load balancer.
+    use_when: Fast delivery of static and cacheable content to users worldwide.
+    docs: https://cloud.google.com/cdn
+    checked: 2026-11
+
+  # ── Security & identity ─────────────────────────────────────────────────────
+  gcp/iam:
+    name: IAM
+    kind: access control
+    category: Security & identity
+    icon: gcp:Security Identity
+    what: Roles and policies that control who and which service accounts may use which resources.
+    use_when: Every architecture; draw it when service accounts or cross-project access matter.
+    docs: https://cloud.google.com/iam
+    checked: 2026-11
+  gcp/secret-manager:
+    name: Secret Manager
+    kind: secrets
+    category: Security & identity
+    icon: gcp:Security Identity
+    what: Stores and versions API keys, passwords and certificates with access control and audit logs.
+    use_when: Any credential a service needs at runtime, such as Salesforce client secrets.
+    docs: https://cloud.google.com/security/products/secret-manager
+    checked: 2026-11
+
+  # ── Analytics & AI ──────────────────────────────────────────────────────────
+  gcp/bigquery:
+    name: BigQuery
+    kind: data warehouse
+    category: Analytics & AI
+    icon: gcp:BigQuery
+    what: Serverless data warehouse for SQL analytics, with built-in ML and streaming ingestion.
+    use_when: Reporting and analytics across many sources, data lakes and large data sets.
+    avoid_when: Transactional workloads with many small updates.
+    connects_with: [gcp/pubsub, gcp/dataflow, gcp/looker, gcp/cloud-storage]
+    docs: https://cloud.google.com/bigquery
+    checked: 2026-11
+  gcp/dataflow:
+    name: Dataflow
+    kind: data pipelines
+    category: Analytics & AI
+    icon: gcp:Data Analytics
+    what: Managed Apache Beam pipelines for streaming and batch data processing.
+    use_when: Transforming and enriching data on its way into BigQuery or other stores.
+    avoid_when: Simple scheduled loads that BigQuery can do by itself.
+    docs: https://cloud.google.com/dataflow
+    checked: 2026-11
+  gcp/looker:
+    name: Looker
+    kind: bi dashboards
+    category: Analytics & AI
+    icon: gcp:Looker
+    what: BI platform with a governed semantic model, dashboards and embedded analytics.
+    use_when: Company-wide dashboards and consistent metric definitions.
+    docs: https://cloud.google.com/looker
+    checked: 2026-11
+  gcp/vertex-ai:
+    name: Vertex AI
+    kind: ai platform
+    category: Analytics & AI
+    icon: gcp:Vertex AI
+    what: Platform for using Gemini and other models, and for building, tuning and serving your own.
+    use_when: Generative AI features, agents and custom models inside Google Cloud.
+    connects_with: [gcp/bigquery, gcp/cloud-run]
+    docs: https://cloud.google.com/vertex-ai
+    checked: 2026-11
+
+  # ── App platform ────────────────────────────────────────────────────────────
+  gcp/firebase:
+    name: Firebase
+    kind: app backend
+    category: App platform
+    icon: firebase
+    what: App development platform with authentication, Firestore, hosting, cloud functions and messaging.
+    use_when: Mobile and web apps that want a ready-made backend with SDKs.
+    avoid_when: Complex enterprise back ends with strict network isolation.
+    connects_with: [gcp/firestore, gcp/cloud-run-functions, gcp/cloud-storage]
+    docs: https://firebase.google.com/
+    checked: 2026-11
+
+  # ── Operations ──────────────────────────────────────────────────────────────
+  gcp/cloud-monitoring:
+    name: Cloud Monitoring & Logging
+    kind: observability
+    category: Operations
+    icon: gcp:Observability
+    what: Metrics, logs, traces, alerts and dashboards for Google Cloud and applications.
+    use_when: Every production system; draw it when alerting or log flows matter.
+    docs: https://cloud.google.com/monitoring
+    checked: 2026-11

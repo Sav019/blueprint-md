@@ -1,0 +1,380 @@
+# Amazon Web Services building blocks for blueprint-md.
+# Icons come from the official AWS Architecture Icons package (`aws:<name>`), downloaded once at build time.
+# Keep entries short and stable; numbers that change (limits, quotas, pricing) belong behind the docs link.
+
+title: AWS
+entries:
+
+  # ── Structure ───────────────────────────────────────────────────────────────
+  aws/cloud:
+    name: AWS Cloud
+    kind: cloud provider
+    category: Structure
+    icon: aws:AWS-Cloud-logo
+    what: Amazon Web Services as a whole; use it as the outer group around AWS resources.
+    use_when: Show which parts of the system run on AWS.
+    docs: https://aws.amazon.com/
+    checked: 2026-11
+  aws/region:
+    name: AWS Region
+    kind: region
+    category: Structure
+    icon: aws:Region
+    what: A geographic area with several isolated data centers (Availability Zones).
+    use_when: Data residency, latency or multi-region failover matter.
+    docs: https://aws.amazon.com/about-aws/global-infrastructure/regions_az/
+    checked: 2026-11
+  aws/vpc:
+    name: Amazon VPC
+    kind: private network
+    category: Structure
+    icon: aws:Amazon-Virtual-Private-Cloud
+    what: An isolated virtual network for your AWS resources, split into public and private subnets.
+    use_when: Servers, containers or databases that must not be reachable directly from the internet.
+    avoid_when: Fully serverless designs that use only managed public endpoints.
+    docs: https://aws.amazon.com/vpc/
+    checked: 2026-11
+
+  # ── Compute ─────────────────────────────────────────────────────────────────
+  aws/ec2:
+    name: Amazon EC2
+    kind: virtual machines
+    category: Compute
+    icon: aws:Amazon-EC2
+    what: Virtual servers with full control over the operating system and software.
+    use_when: Legacy or special software, custom runtimes, or steady workloads that need full control.
+    avoid_when: Plain web apps and APIs, where containers or functions save operations work.
+    connects_with: [aws/elb, aws/rds, aws/s3]
+    docs: https://aws.amazon.com/ec2/
+    checked: 2026-11
+  aws/lambda:
+    name: AWS Lambda
+    kind: functions
+    category: Compute
+    icon: aws:AWS-Lambda
+    what: Runs code in response to events or requests without managing servers; billed per invocation.
+    use_when: Event-driven glue, APIs with spiky traffic, scheduled tasks and integrations.
+    avoid_when: Long-running jobs or steady high load (containers are simpler and cheaper there).
+    connects_with: [aws/api-gateway, aws/sqs, aws/eventbridge, aws/dynamodb, aws/s3, aws/step-functions]
+    docs: https://aws.amazon.com/lambda/
+    checked: 2026-11
+  aws/ecs:
+    name: Amazon ECS
+    kind: containers
+    category: Compute
+    icon: aws:Amazon-Elastic-Container-Service
+    what: AWS's own container orchestrator for running Docker containers as services or tasks.
+    use_when: Containerized services on AWS without the complexity of Kubernetes.
+    avoid_when: You need Kubernetes compatibility or its ecosystem (use EKS).
+    connects_with: [aws/fargate, aws/elb, aws/rds]
+    docs: https://aws.amazon.com/ecs/
+    checked: 2026-11
+  aws/eks:
+    name: Amazon EKS
+    kind: managed kubernetes
+    category: Compute
+    icon: aws:Amazon-Elastic-Kubernetes-Service
+    what: Managed Kubernetes control plane for running container workloads.
+    use_when: Teams already standardized on Kubernetes, or portability across clouds matters.
+    avoid_when: A few services that ECS or App Runner can run with far less operations work.
+    docs: https://aws.amazon.com/eks/
+    checked: 2026-11
+  aws/fargate:
+    name: AWS Fargate
+    kind: containers
+    category: Compute
+    icon: aws:AWS-Fargate
+    what: Runs ECS or EKS containers without managing the underlying servers.
+    use_when: Containers without patching or scaling EC2 hosts yourself.
+    avoid_when: Workloads that need GPUs or host-level access.
+    docs: https://aws.amazon.com/fargate/
+    checked: 2026-11
+  aws/app-runner:
+    name: AWS App Runner
+    kind: managed web apps
+    category: Compute
+    icon: aws:AWS-App-Runner
+    what: Deploys web apps and APIs from source or a container image with scaling and HTTPS built in.
+    use_when: Simple web services where speed of setup matters more than fine-grained control.
+    avoid_when: Complex networking, background workers or non-HTTP workloads.
+    docs: https://aws.amazon.com/apprunner/
+    checked: 2026-11
+
+  # ── Storage & databases ─────────────────────────────────────────────────────
+  aws/s3:
+    name: Amazon S3
+    kind: object storage
+    category: Storage & databases
+    icon: aws:Amazon-Simple-Storage-Service
+    what: Durable object storage for files, backups, data lakes and static websites.
+    use_when: Files, documents, media, exports and raw data of any size.
+    avoid_when: Data that needs queries, transactions or frequent small updates (use a database).
+    connects_with: [aws/cloudfront, aws/lambda, aws/athena, aws/glue]
+    docs: https://aws.amazon.com/s3/
+    checked: 2026-11
+  aws/efs:
+    name: Amazon EFS
+    kind: shared file system
+    category: Storage & databases
+    icon: aws:Amazon-EFS
+    what: Managed network file system that many servers or containers can mount at the same time.
+    use_when: Applications that expect a shared POSIX file system.
+    avoid_when: Plain file storage accessed over an API (S3 is cheaper and simpler).
+    docs: https://aws.amazon.com/efs/
+    checked: 2026-11
+  aws/rds:
+    name: Amazon RDS
+    kind: relational database
+    category: Storage & databases
+    icon: aws:Amazon-RDS
+    what: Managed PostgreSQL, MySQL, MariaDB, Oracle or SQL Server with backups and failover.
+    use_when: Relational data with transactions, joins and an existing SQL skill set.
+    avoid_when: Huge scale with simple key access patterns (DynamoDB fits better).
+    connects_with: [aws/ec2, aws/ecs, aws/lambda]
+    docs: https://aws.amazon.com/rds/
+    checked: 2026-11
+  aws/aurora:
+    name: Amazon Aurora
+    kind: cloud-native sql
+    category: Storage & databases
+    icon: aws:Amazon-Aurora
+    what: MySQL- and PostgreSQL-compatible database built for the cloud, including a serverless option.
+    use_when: Relational workloads that need higher throughput, fast failover or automatic scaling.
+    avoid_when: Small, steady databases where standard RDS is cheaper.
+    docs: https://aws.amazon.com/rds/aurora/
+    checked: 2026-11
+  aws/dynamodb:
+    name: Amazon DynamoDB
+    kind: nosql key-value
+    category: Storage & databases
+    icon: aws:Amazon-DynamoDB
+    what: Serverless key-value and document database with consistent single-digit-millisecond access.
+    use_when: High-scale access by known keys, such as sessions, carts, user profiles and event state.
+    avoid_when: Ad-hoc queries, reporting or many-to-many relations (use a relational database).
+    connects_with: [aws/lambda, aws/api-gateway]
+    docs: https://aws.amazon.com/dynamodb/
+    checked: 2026-11
+  aws/elasticache:
+    name: Amazon ElastiCache
+    kind: in-memory cache
+    category: Storage & databases
+    icon: aws:Amazon-ElastiCache
+    what: Managed Valkey, Redis OSS or Memcached for caching and fast in-memory data.
+    use_when: Caching expensive reads, sessions, rate limits and leaderboards.
+    avoid_when: As the only copy of important data.
+    docs: https://aws.amazon.com/elasticache/
+    checked: 2026-11
+  aws/opensearch:
+    name: Amazon OpenSearch Service
+    kind: search & logs
+    category: Storage & databases
+    icon: aws:Amazon-OpenSearch-Service
+    what: Managed OpenSearch for full-text search, log analytics and vector search.
+    use_when: Search boxes, faceted search, log exploration or semantic search.
+    avoid_when: As the primary system of record.
+    docs: https://aws.amazon.com/opensearch-service/
+    checked: 2026-11
+
+  # ── Integration ─────────────────────────────────────────────────────────────
+  aws/api-gateway:
+    name: Amazon API Gateway
+    kind: api front door
+    category: Integration
+    icon: aws:Amazon-API-Gateway
+    what: Publishes, secures and throttles REST, HTTP and WebSocket APIs in front of Lambda or other backends.
+    use_when: Public or partner APIs that need authentication, throttling and usage plans.
+    avoid_when: Internal service-to-service calls inside one VPC (a load balancer is enough).
+    connects_with: [aws/lambda, aws/cognito, aws/step-functions]
+    docs: https://aws.amazon.com/api-gateway/
+    checked: 2026-11
+  aws/sqs:
+    name: Amazon SQS
+    kind: message queue
+    category: Integration
+    icon: aws:Amazon-Simple-Queue-Service
+    what: Fully managed message queue that decouples producers from consumers.
+    use_when: Buffering work, retries and smoothing load between services.
+    avoid_when: Several consumers need the same message (use SNS or EventBridge to fan out).
+    connects_with: [aws/lambda, aws/sns, aws/eventbridge]
+    docs: https://aws.amazon.com/sqs/
+    checked: 2026-11
+  aws/sns:
+    name: Amazon SNS
+    kind: notifications
+    category: Integration
+    icon: aws:Amazon-Simple-Notification-Service
+    what: Publishes messages to many subscribers at once, including queues, functions, email and SMS.
+    use_when: Fan-out of one message to several systems or people.
+    avoid_when: Content-based routing between many event types (EventBridge is more flexible).
+    docs: https://aws.amazon.com/sns/
+    checked: 2026-11
+  aws/eventbridge:
+    name: Amazon EventBridge
+    kind: event bus
+    category: Integration
+    icon: aws:Amazon-EventBridge
+    what: Serverless event bus that routes events by rules, including events from SaaS partners such as Salesforce.
+    use_when: Event-driven architectures and receiving SaaS events, for example Salesforce events through the partner integration.
+    avoid_when: High-throughput ordered streams (use Kinesis).
+    connects_with: [aws/lambda, aws/sqs, aws/step-functions, salesforce/platform-event]
+    docs: https://aws.amazon.com/eventbridge/
+    checked: 2026-11
+  aws/step-functions:
+    name: AWS Step Functions
+    kind: workflows
+    category: Integration
+    icon: aws:AWS-Step-Functions
+    what: Visual state machines that coordinate Lambda functions and AWS services with retries and error handling.
+    use_when: Multi-step processes with branching, waiting, retries or human approval.
+    avoid_when: A single function call with no orchestration.
+    docs: https://aws.amazon.com/step-functions/
+    checked: 2026-11
+  aws/appflow:
+    name: Amazon AppFlow
+    kind: saas data flows
+    category: Integration
+    icon: aws:Amazon-AppFlow
+    what: No-code data flows between SaaS apps such as Salesforce and AWS services like S3 and Redshift.
+    use_when: Scheduled or event-triggered data transfers between Salesforce and AWS without custom code.
+    avoid_when: Complex transformations or orchestration across many systems (use middleware or Step Functions).
+    connects_with: [salesforce/sales-cloud, aws/s3, aws/redshift]
+    docs: https://aws.amazon.com/appflow/
+    checked: 2026-11
+  aws/kinesis:
+    name: Amazon Kinesis Data Streams
+    kind: data streaming
+    category: Integration
+    icon: aws:Amazon-Kinesis-Data-Streams
+    what: Real-time, ordered streams of records that several consumers can read.
+    use_when: Clickstreams, telemetry, logs and other high-volume event streams.
+    avoid_when: Low-volume business events (EventBridge or SQS are simpler).
+    docs: https://aws.amazon.com/kinesis/data-streams/
+    checked: 2026-11
+
+  # ── Networking & delivery ───────────────────────────────────────────────────
+  aws/cloudfront:
+    name: Amazon CloudFront
+    kind: cdn
+    category: Networking & delivery
+    icon: aws:Amazon-CloudFront
+    what: Global content delivery network for static files, websites and APIs.
+    use_when: Fast, cached delivery to users worldwide and a single HTTPS entry point.
+    docs: https://aws.amazon.com/cloudfront/
+    checked: 2026-11
+  aws/route53:
+    name: Amazon Route 53
+    kind: dns
+    category: Networking & delivery
+    icon: aws:Amazon-Route-53
+    what: Managed DNS with health checks and routing policies.
+    use_when: Domains and DNS-based failover or latency routing.
+    docs: https://aws.amazon.com/route53/
+    checked: 2026-11
+  aws/elb:
+    name: Elastic Load Balancing
+    kind: load balancer
+    category: Networking & delivery
+    icon: aws:Elastic-Load-Balancing
+    what: Distributes traffic across servers or containers; Application Load Balancer for HTTP, Network Load Balancer for TCP.
+    use_when: Several instances or containers behind one endpoint, usually in public subnets.
+    docs: https://aws.amazon.com/elasticloadbalancing/
+    checked: 2026-11
+
+  # ── Security & identity ─────────────────────────────────────────────────────
+  aws/iam:
+    name: AWS IAM
+    kind: access control
+    category: Security & identity
+    icon: aws:AWS-Identity-and-Access-Management
+    what: Users, roles and policies that control who and what may access AWS resources.
+    use_when: Every architecture; draw it when roles or cross-account access matter.
+    docs: https://aws.amazon.com/iam/
+    checked: 2026-11
+  aws/cognito:
+    name: Amazon Cognito
+    kind: user sign-in
+    category: Security & identity
+    icon: aws:Amazon-Cognito
+    what: Sign-up, sign-in and tokens for web and mobile app users, including social and SAML login.
+    use_when: Customer-facing apps that need their own user directory.
+    avoid_when: Employee single sign-on that already runs through a corporate identity provider.
+    docs: https://aws.amazon.com/cognito/
+    checked: 2026-11
+  aws/secrets-manager:
+    name: AWS Secrets Manager
+    kind: secrets
+    category: Security & identity
+    icon: aws:AWS-Secrets-Manager
+    what: Stores, rotates and controls access to credentials, API keys and other secrets.
+    use_when: Any credential a service needs at runtime, such as database passwords or Salesforce client secrets.
+    docs: https://aws.amazon.com/secrets-manager/
+    checked: 2026-11
+  aws/kms:
+    name: AWS KMS
+    kind: encryption keys
+    category: Security & identity
+    icon: aws:AWS-Key-Management-Service
+    what: Creates and controls the keys used to encrypt data across AWS services.
+    use_when: Customer-managed encryption keys, compliance and key rotation.
+    docs: https://aws.amazon.com/kms/
+    checked: 2026-11
+
+  # ── Analytics & AI ──────────────────────────────────────────────────────────
+  aws/redshift:
+    name: Amazon Redshift
+    kind: data warehouse
+    category: Analytics & AI
+    icon: aws:Amazon-Redshift
+    what: Columnar data warehouse for SQL analytics over large data sets.
+    use_when: BI and reporting across many sources at scale.
+    avoid_when: Transactional workloads.
+    docs: https://aws.amazon.com/redshift/
+    checked: 2026-11
+  aws/glue:
+    name: AWS Glue
+    kind: etl & data catalog
+    category: Analytics & AI
+    icon: aws:AWS-Glue
+    what: Serverless data integration (ETL) and a central catalog of data sets.
+    use_when: Preparing and moving data into a data lake or warehouse.
+    docs: https://aws.amazon.com/glue/
+    checked: 2026-11
+  aws/athena:
+    name: Amazon Athena
+    kind: sql on s3
+    category: Analytics & AI
+    icon: aws:Amazon-Athena
+    what: Serverless SQL queries directly on data stored in S3.
+    use_when: Ad-hoc analysis of a data lake without loading it into a warehouse.
+    docs: https://aws.amazon.com/athena/
+    checked: 2026-11
+  aws/bedrock:
+    name: Amazon Bedrock
+    kind: generative ai
+    category: Analytics & AI
+    icon: aws:Amazon-Bedrock
+    what: Managed access to foundation models from several providers, plus agents, knowledge bases and guardrails.
+    use_when: Generative AI features that should stay inside AWS.
+    docs: https://aws.amazon.com/bedrock/
+    checked: 2026-11
+  aws/sagemaker:
+    name: Amazon SageMaker AI
+    kind: machine learning
+    category: Analytics & AI
+    icon: aws:Amazon-SageMaker-AI
+    what: Build, train and deploy custom machine-learning models.
+    use_when: Training or hosting your own models.
+    avoid_when: Using an existing foundation model through an API (use Bedrock).
+    docs: https://aws.amazon.com/sagemaker/
+    checked: 2026-11
+
+  # ── Operations ──────────────────────────────────────────────────────────────
+  aws/cloudwatch:
+    name: Amazon CloudWatch
+    kind: monitoring
+    category: Operations
+    icon: aws:Amazon-CloudWatch
+    what: Metrics, logs, alarms and dashboards for AWS resources and applications.
+    use_when: Every production system; draw it when alerting or log flows matter.
+    docs: https://aws.amazon.com/cloudwatch/
+    checked: 2026-11

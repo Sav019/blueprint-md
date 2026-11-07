@@ -1,0 +1,285 @@
+# Microsoft Azure building blocks for blueprint-md.
+# Icons come from Microsoft's official Azure Public Service Icons package (`azure:<name>`), downloaded once
+# at build time. Microsoft Entra ID is published in a separate icon set, so its entry uses a neutral pictogram.
+
+title: Azure
+entries:
+
+  # ── Structure ───────────────────────────────────────────────────────────────
+  azure/cloud:
+    name: Microsoft Azure
+    kind: cloud provider
+    category: Structure
+    icon: azure
+    what: Microsoft Azure as a whole; use it as the outer group around Azure resources.
+    use_when: Show which parts of the system run on Azure.
+    docs: https://azure.microsoft.com/
+    checked: 2026-11
+  azure/resource-group:
+    name: Resource Group
+    kind: resource container
+    category: Structure
+    icon: azure:Resource Groups
+    what: A container that holds related Azure resources and shares their lifecycle and permissions.
+    use_when: Show how resources are organized and deployed together.
+    docs: https://learn.microsoft.com/azure/azure-resource-manager/management/manage-resource-groups-portal
+    checked: 2026-11
+  azure/vnet:
+    name: Virtual Network
+    kind: private network
+    category: Structure
+    icon: azure:Virtual Networks
+    what: An isolated private network in one region, divided into subnets.
+    use_when: VMs, AKS, private endpoints and anything that must not be publicly reachable.
+    docs: https://learn.microsoft.com/azure/virtual-network/
+    checked: 2026-11
+
+  # ── Compute ─────────────────────────────────────────────────────────────────
+  azure/vm:
+    name: Virtual Machines
+    kind: virtual machines
+    category: Compute
+    icon: azure:Virtual Machine
+    what: Windows or Linux virtual servers with full control over the operating system.
+    use_when: Legacy or special software, lift-and-shift migrations, custom runtimes.
+    avoid_when: Plain web apps and APIs (App Service or Container Apps need far less operations work).
+    docs: https://learn.microsoft.com/azure/virtual-machines/
+    checked: 2026-11
+  azure/app-service:
+    name: App Service
+    kind: managed web apps
+    category: Compute
+    icon: azure:App Services
+    what: Managed hosting for web apps and APIs in .NET, Java, Node.js, Python and containers.
+    use_when: Web apps and APIs without managing servers, with deployment slots and easy scaling.
+    avoid_when: Event-driven microservices that should scale to zero (Container Apps or Functions).
+    connects_with: [azure/sql-database, azure/key-vault, azure/front-door]
+    docs: https://learn.microsoft.com/azure/app-service/
+    checked: 2026-11
+  azure/functions:
+    name: Azure Functions
+    kind: functions
+    category: Compute
+    icon: azure:Function Apps
+    what: Event-driven serverless code with triggers and bindings for many Azure services.
+    use_when: Event handlers, webhooks, scheduled jobs and integration glue.
+    avoid_when: Long-running or steady high-load services (Container Apps or App Service).
+    connects_with: [azure/service-bus, azure/event-grid, azure/cosmos-db, azure/storage]
+    docs: https://learn.microsoft.com/azure/azure-functions/
+    checked: 2026-11
+  azure/container-apps:
+    name: Azure Container Apps
+    kind: containers
+    category: Compute
+    icon: azure:Worker Container App
+    what: Runs containerized apps and microservices with automatic scaling, including scale to zero.
+    use_when: Microservices and APIs in containers without managing Kubernetes.
+    avoid_when: You need full Kubernetes control (use AKS).
+    docs: https://learn.microsoft.com/azure/container-apps/
+    checked: 2026-11
+  azure/aks:
+    name: Azure Kubernetes Service
+    kind: managed kubernetes
+    category: Compute
+    icon: azure:Kubernetes Services
+    what: Managed Kubernetes for running container workloads at scale.
+    use_when: Teams standardized on Kubernetes or complex multi-service platforms.
+    avoid_when: A few services that Container Apps can run with much less work.
+    docs: https://learn.microsoft.com/azure/aks/
+    checked: 2026-11
+
+  # ── Storage & databases ─────────────────────────────────────────────────────
+  azure/storage:
+    name: Storage Account
+    kind: blob & file storage
+    category: Storage & databases
+    icon: azure:Storage Accounts
+    what: Durable storage for blobs (files), file shares, simple queues and tables.
+    use_when: Files, documents, media, backups and data-lake storage.
+    avoid_when: Data that needs queries or transactions (use a database).
+    docs: https://learn.microsoft.com/azure/storage/common/storage-account-overview
+    checked: 2026-11
+  azure/sql-database:
+    name: Azure SQL Database
+    kind: relational database
+    category: Storage & databases
+    icon: azure:SQL Database
+    what: Managed SQL Server database engine with backups, high availability and a serverless tier.
+    use_when: Relational data, especially for teams already using SQL Server.
+    docs: https://learn.microsoft.com/azure/azure-sql/database/
+    checked: 2026-11
+  azure/postgresql:
+    name: Azure Database for PostgreSQL
+    kind: relational database
+    category: Storage & databases
+    icon: azure:Azure Database PostgreSQL Server
+    what: Managed PostgreSQL (flexible server) with backups and high availability.
+    use_when: Relational workloads built on PostgreSQL.
+    docs: https://learn.microsoft.com/azure/postgresql/
+    checked: 2026-11
+  azure/cosmos-db:
+    name: Azure Cosmos DB
+    kind: global nosql
+    category: Storage & databases
+    icon: azure:Azure Cosmos DB
+    what: Globally distributed NoSQL database with several APIs (NoSQL, MongoDB, Cassandra…) and vector search.
+    use_when: Low-latency access at global scale, flexible JSON documents, multi-region writes.
+    avoid_when: Reporting and complex joins (use SQL or Synapse/Fabric).
+    docs: https://learn.microsoft.com/azure/cosmos-db/
+    checked: 2026-11
+  azure/redis:
+    name: Azure Managed Redis
+    kind: in-memory cache
+    category: Storage & databases
+    icon: azure:Azure Managed Redis
+    what: Managed Redis for caching, sessions and fast in-memory data.
+    use_when: Caching expensive reads, sessions and rate limits.
+    avoid_when: As the only copy of important data.
+    docs: https://learn.microsoft.com/azure/redis/
+    checked: 2026-11
+
+  # ── Integration ─────────────────────────────────────────────────────────────
+  azure/api-management:
+    name: API Management
+    kind: api gateway
+    category: Integration
+    icon: azure:API Management Services
+    what: Publishes, secures, throttles and documents APIs, with a developer portal.
+    use_when: APIs offered to partners or several teams that need governance.
+    avoid_when: A single internal API without consumers to manage.
+    connects_with: [azure/functions, azure/app-service, azure/logic-apps]
+    docs: https://learn.microsoft.com/azure/api-management/
+    checked: 2026-11
+  azure/service-bus:
+    name: Azure Service Bus
+    kind: message broker
+    category: Integration
+    icon: azure:Azure Service Bus
+    what: Message broker with queues and topics, sessions, transactions and dead-lettering.
+    use_when: Reliable business messages between systems, such as orders and payments.
+    avoid_when: Very high-volume telemetry streams (use Event Hubs).
+    connects_with: [azure/functions, azure/logic-apps]
+    docs: https://learn.microsoft.com/azure/service-bus-messaging/
+    checked: 2026-11
+  azure/event-grid:
+    name: Azure Event Grid
+    kind: event routing
+    category: Integration
+    icon: azure:Event Grid Topics
+    what: Routes discrete events from Azure services, SaaS partners and your apps to handlers with filtering.
+    use_when: Reacting to changes (a file uploaded, a resource created) without polling.
+    avoid_when: Ordered high-volume streams (Event Hubs) or business workflows (Service Bus).
+    docs: https://learn.microsoft.com/azure/event-grid/
+    checked: 2026-11
+  azure/event-hubs:
+    name: Azure Event Hubs
+    kind: data streaming
+    category: Integration
+    icon: azure:Event Hubs
+    what: Big-data streaming platform that ingests millions of events per second, Kafka-compatible.
+    use_when: Telemetry, clickstreams and log streams.
+    avoid_when: Individual business messages that need per-message handling (Service Bus).
+    docs: https://learn.microsoft.com/azure/event-hubs/
+    checked: 2026-11
+  azure/logic-apps:
+    name: Azure Logic Apps
+    kind: low-code workflows
+    category: Integration
+    icon: azure:Logic Apps
+    what: Low-code workflows with hundreds of connectors, including Salesforce, SAP and Office 365.
+    use_when: Integrations between SaaS and enterprise systems without much custom code.
+    avoid_when: Performance-critical or complex logic (Functions or code-first services).
+    connects_with: [azure/service-bus, azure/api-management, salesforce/sales-cloud]
+    docs: https://learn.microsoft.com/azure/logic-apps/
+    checked: 2026-11
+  azure/data-factory:
+    name: Azure Data Factory
+    kind: etl pipelines
+    category: Integration
+    icon: azure:Data Factories
+    what: Pipelines that copy and transform data between many sources, scheduled or triggered.
+    use_when: Batch data movement into a data lake or warehouse, including from Salesforce.
+    avoid_when: Real-time event handling.
+    docs: https://learn.microsoft.com/azure/data-factory/
+    checked: 2026-11
+
+  # ── Networking ──────────────────────────────────────────────────────────────
+  azure/front-door:
+    name: Azure Front Door
+    kind: global entry & cdn
+    category: Networking
+    icon: azure:Front Door and CDN Profiles
+    what: Global entry point with CDN, web application firewall and routing to backends in several regions.
+    use_when: Public web apps and APIs with users worldwide.
+    docs: https://learn.microsoft.com/azure/frontdoor/
+    checked: 2026-11
+  azure/application-gateway:
+    name: Application Gateway
+    kind: load balancer
+    category: Networking
+    icon: azure:Application Gateways
+    what: Regional HTTP load balancer with web application firewall, inside your virtual network.
+    use_when: Routing web traffic to backends within one region and VNet.
+    docs: https://learn.microsoft.com/azure/application-gateway/
+    checked: 2026-11
+
+  # ── Security & identity ─────────────────────────────────────────────────────
+  azure/entra-id:
+    name: Microsoft Entra ID
+    kind: identity provider
+    category: Security & identity
+    icon: lucide:lock
+    what: Microsoft's cloud identity service (formerly Azure Active Directory) for sign-in, SSO and app access.
+    use_when: Employee sign-in, single sign-on (for example into Salesforce) and service identities.
+    avoid_when: Consumer sign-up for public apps (use an external customer identity solution).
+    docs: https://learn.microsoft.com/entra/identity/
+    checked: 2026-11
+  azure/key-vault:
+    name: Azure Key Vault
+    kind: secrets & keys
+    category: Security & identity
+    icon: azure:Key Vaults
+    what: Stores secrets, keys and certificates with access control and audit logs.
+    use_when: Any credential a service needs at runtime, such as Salesforce client secrets.
+    docs: https://learn.microsoft.com/azure/key-vault/
+    checked: 2026-11
+
+  # ── Analytics & AI ──────────────────────────────────────────────────────────
+  azure/openai:
+    name: Azure OpenAI
+    kind: generative ai
+    category: Analytics & AI
+    icon: azure:Azure OpenAI
+    what: OpenAI models (GPT, embeddings and more) hosted in Azure with enterprise security.
+    use_when: Generative AI features that must stay within Azure's compliance boundary.
+    docs: https://learn.microsoft.com/azure/ai-foundry/openai/
+    checked: 2026-11
+  azure/ai-search:
+    name: Azure AI Search
+    kind: search & retrieval
+    category: Analytics & AI
+    icon: azure:Cognitive Search
+    what: Full-text, vector and hybrid search over your content (formerly Cognitive Search).
+    use_when: Search features and retrieval for AI assistants (RAG).
+    docs: https://learn.microsoft.com/azure/search/
+    checked: 2026-11
+  azure/synapse:
+    name: Azure Synapse Analytics
+    kind: analytics
+    category: Analytics & AI
+    icon: azure:Azure Synapse Analytics
+    what: Data warehousing and big-data analytics with SQL and Spark.
+    use_when: Large-scale analytics on Azure; Microsoft Fabric is the newer option for many new projects.
+    docs: https://learn.microsoft.com/azure/synapse-analytics/
+    checked: 2026-11
+
+  # ── Operations ──────────────────────────────────────────────────────────────
+  azure/monitor:
+    name: Azure Monitor
+    kind: monitoring
+    category: Operations
+    icon: azure:Monitor
+    what: Metrics, logs, alerts and dashboards for Azure resources and applications, including Application Insights.
+    use_when: Every production system; draw it when alerting or log flows matter.
+    docs: https://learn.microsoft.com/azure/azure-monitor/
+    checked: 2026-11
