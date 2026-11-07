@@ -1,0 +1,134 @@
+# Generic, vendor-neutral building blocks for blueprint-md.
+# Use them when no specific product is chosen yet, or for parts of any architecture.
+
+title: Generic
+entries:
+  generic/user:
+    name: User
+    kind: person
+    category: People & clients
+    icon: lucide:user
+    what: A person who uses the system.
+    use_when: Show who starts a flow. Name the role (customer, agent, admin).
+  generic/team:
+    name: Team
+    kind: group of people
+    category: People & clients
+    icon: lucide:users
+    what: A group of people with the same role.
+    use_when: Several people act the same way, such as a support team.
+  generic/web-app:
+    name: Web App
+    kind: web frontend
+    category: People & clients
+    icon: lucide:app-window
+    what: A browser-based user interface.
+    use_when: Users work in a browser.
+  generic/mobile-app:
+    name: Mobile App
+    kind: mobile client
+    category: People & clients
+    icon: lucide:smartphone
+    what: A native or hybrid app on phones or tablets.
+    use_when: Users work on mobile devices, possibly offline.
+
+  generic/service:
+    name: Service
+    kind: backend service
+    category: Compute
+    icon: lucide:server
+    what: A backend process that owns one responsibility and exposes an API.
+    use_when: Custom logic that runs on your own infrastructure or a cloud runtime.
+  generic/api:
+    name: API
+    kind: api
+    category: Compute
+    icon: lucide:globe
+    what: An interface that other systems call over the network.
+    use_when: The interface itself matters more than the code behind it.
+  generic/function:
+    name: Function
+    kind: serverless function
+    category: Compute
+    icon: lucide:zap
+    what: Short-lived code that runs on an event or request.
+    use_when: Small, event-driven tasks without a long-running server.
+  generic/scheduler:
+    name: Scheduler
+    kind: scheduled job
+    category: Compute
+    icon: lucide:clock
+    what: Starts work on a schedule.
+    use_when: Nightly syncs, reports, clean-up jobs.
+  generic/ai-model:
+    name: AI Model
+    kind: llm / ml model
+    category: Compute
+    icon: lucide:brain-circuit
+    what: A machine-learning or large language model called by the system.
+    use_when: Text generation, classification, extraction, recommendations.
+
+  generic/database:
+    name: Database
+    kind: database
+    category: Data
+    icon: lucide:database
+    what: Stores structured data that the system reads and writes.
+    use_when: Any persistent application data. Name the engine in `tech:`.
+  generic/file-storage:
+    name: File Storage
+    kind: object storage
+    category: Data
+    icon: lucide:hard-drive
+    what: Stores files and binary objects.
+    use_when: Documents, images, exports, backups.
+  generic/data-warehouse:
+    name: Data Warehouse
+    kind: analytics store
+    category: Data
+    icon: lucide:file-stack
+    what: Central store for reporting and analytics across systems.
+    use_when: Cross-system reporting, history and BI.
+  generic/queue:
+    name: Queue
+    kind: message queue
+    category: Data
+    icon: lucide:inbox
+    what: Holds messages until a consumer processes them.
+    use_when: Decoupling producers and consumers, smoothing load, retries.
+  generic/event-bus:
+    name: Event Bus
+    kind: pub/sub
+    category: Data
+    icon: lucide:radio-tower
+    what: Delivers events to every interested subscriber.
+    use_when: Several systems react to the same event.
+
+  generic/external-system:
+    name: External System
+    kind: third-party system
+    category: Integration
+    icon: lucide:network
+    what: A system outside your control that you integrate with.
+    use_when: Partner, legacy or SaaS systems without a more specific entry.
+  generic/webhook:
+    name: Webhook
+    kind: http callback
+    category: Integration
+    icon: lucide:webhook
+    what: An HTTP endpoint that another system calls when something happens.
+    use_when: Simple push notifications between systems.
+  generic/email:
+    name: Email
+    kind: email service
+    category: Integration
+    icon: lucide:mail
+    what: Sends or receives email.
+    use_when: Notifications and email-based processes.
+  generic/identity-provider:
+    name: Identity Provider
+    kind: sso / auth
+    category: Integration
+    icon: lucide:lock
+    what: Authenticates users and issues tokens (SSO).
+    use_when: Central login across systems.

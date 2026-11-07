@@ -4,11 +4,14 @@
 Usage:
   python3 blueprint.py build architecture.yaml [--out DIR] [--png] [--offline]
   python3 blueprint.py check architecture.yaml
+  python3 blueprint.py catalog [words…] [--write PATH] [--check] [--no-links]
 
 build   writes <name>.html (self-contained diagram), ARCHITECTURE.md and, with --png,
         <name>.png + <name>-dark.png (needs Playwright: pip install playwright &&
         python3 -m playwright install chromium)
 check   parses, lays out and routes the diagram and prints warnings without writing files
+catalog lists the building blocks (filter with words), writes them as a Markdown page,
+        or checks entries, review dates and docs links
 
 Icons are fetched on first use and cached in .blueprint/icons/ next to the YAML file.
 Requires PyYAML (pip install pyyaml).
@@ -51,14 +54,46 @@ class BlueprintError(Exception):
     pass
 
 
+# ── catalog ───────────────────────────────────────────────────────────────────
+CATALOG_DIR = pathlib.Path(__file__).resolve().parent.parent / "catalog"
+CATALOG_FIELDS = ("name", "kind", "category", "icon", "what", "use_when", "avoid_when",
+                  "connects_with", "docs", "checked")
+
+
+def load_catalog(extra_files=()):
+    """Return {type: entry} from the bundled catalog/*.yaml plus any extra catalog files."""
+    entries = {}
+    files = sorted(CATALOG_DIR.glob("*.yaml")) + [pathlib.Path(f) for f in extra_files]
+    for f in files:
+        try:
+            data = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+        except (OSError, yaml.YAMLError) as e:
+            raise BlueprintError(f"error: catalog {f}: {e}")
+        for type_id, entry in (data.get("entries") or {}).items():
+            entry = dict(entry or {})
+            unknown = set(entry) - set(CATALOG_FIELDS)
+            if unknown:
+                raise BlueprintError(f"error: catalog {f.name} '{type_id}': unknown field(s) {', '.join(sorted(unknown))}")
+            entry.update(type=type_id, catalog=data.get("title", f.stem), file=f.name)
+            entries[type_id] = entry
+    return entries
+
+
+def suggest(word, options):
+    import difflib
+    close = difflib.get_close_matches(word, options, n=3, cutoff=0.5)
+    return f" (did you mean {', '.join(close)}?)" if close else ""
+
+
 # ── model ─────────────────────────────────────────────────────────────────────
 def load(path):
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except yaml.YAMLError as e:
         raise BlueprintError(f"{path}: invalid YAML\n{e}")
-    errors = []
+    errors, warnings = [], []
     grid = {**DEFAULT_GRID, **(data.get("grid") or {})}
+    catalog = load_catalog(path.parent / f for f in (data.get("catalogs") or []))
 
     groups = {}
     for gid, g in (data.get("groups") or {}).items():
@@ -82,10 +117,18 @@ def load(path):
             continue
         if c.get("group") and c["group"] not in groups:
             errors.append(f"component '{cid}': group '{c['group']}' is not defined")
-        comps[cid] = {"id": cid, "name": str(c.get("name", cid)), "kind": str(c.get("kind", "")),
-                      "icon": c.get("icon"), "group": c.get("group"), "tile": c.get("tile", ""),
-                      "col": float(at[0]), "row": float(at[1]), "about": c.get("about", ""),
-                      "tech": c.get("tech", ""), "code": c.get("code", "")}
+        block = {}
+        if c.get("type"):
+            block = catalog.get(c["type"], {})
+            if not block:
+                warnings.append(f"component '{cid}': type '{c['type']}' is not in the catalog"
+                                f"{suggest(c['type'], list(catalog))}; run 'blueprint.py catalog' to list types")
+        comps[cid] = {"id": cid, "name": str(c.get("name") or block.get("name") or cid),
+                      "kind": str(c.get("kind") or block.get("kind") or ""),
+                      "icon": c.get("icon") or block.get("icon"), "group": c.get("group"),
+                      "tile": c.get("tile", ""), "col": float(at[0]), "row": float(at[1]),
+                      "about": c.get("about", ""), "tech": c.get("tech", ""), "code": c.get("code", ""),
+                      "type": c.get("type", ""), "block": block}
 
     conns = []
     for i, raw in enumerate(data.get("connections") or [], 1):
@@ -120,7 +163,7 @@ def load(path):
     return {"title": data.get("title", path.stem), "summary": data.get("summary", ""),
             "grid": grid, "groups": groups, "comps": comps, "conns": conns, "flows": flows,
             "decisions": data.get("decisions") or [], "notes": data.get("notes", ""),
-            "legend": data.get("legend") or {}, "source": path.name}
+            "legend": data.get("legend") or {}, "source": path.name, "warnings": warnings}
 
 
 # ── layout ────────────────────────────────────────────────────────────────────
@@ -545,7 +588,7 @@ def render_html(m, icons):
         tile = "tile" + "".join(f" {t}" for t in str(c["tile"]).split() if t in ("dark", "wide", "bare"))
         kind = f'<div class="kind"><span>{esc(c["kind"])}</span></div>' if c["kind"] else ""
         out.append(f'<div class="node" style="left:{c["cx"] - BOX_W / 2:.0f}px;top:{c["top"]:.0f}px" '
-                   f'data-id="{esc(c["id"])}" title="{esc(c["about"])}"><div class="{tile}">{inner}</div>'
+                   f'data-id="{esc(c["id"])}" title="{esc(c["about"] or c["block"].get("what", ""))}"><div class="{tile}">{inner}</div>'
                    f'<div class="name"><span>{esc(c["name"])}</span></div>{kind}</div>')
 
     used = {("primary" if e["primary"] else "dashed" if e["dashed"] else "default") for e in m["conns"]}
@@ -641,8 +684,14 @@ def render_markdown(m, image):
         L += [f"### {c['name']} (`{c['id']}`)", ""]
         if c["about"]:
             L += [str(c["about"]).strip(), ""]
-        facts = [("Role", c["kind"]), ("Technology", c["tech"]),
-                 ("Part of", group_path(m, c["group"]) if c["group"] else ""), ("Code", f"`{c['code']}`" if c["code"] else "")]
+        b = c["block"]
+        block = ""
+        if b:
+            label = f"[{b['name']}]({b['docs']})" if b.get("docs") else b["name"]
+            block = f"{label} (`{c['type']}`)" + (f": {b['what']}" if b.get("what") else "")
+        facts = [("Building block", block), ("Role", c["kind"]), ("Technology", c["tech"]),
+                 ("Part of", group_path(m, c["group"]) if c["group"] else ""), ("Code", f"`{c['code']}`" if c["code"] else ""),
+                 ("Not meant for", b.get("avoid_when", ""))]
         L += [f"- **{k}:** {v}" for k, v in facts if v]
         mine = [e for e in conns if c["id"] in (e["src"], e["dst"])]
         other = lambda e: e["dst"] if e["src"] == c["id"] else e["src"]
@@ -728,20 +777,167 @@ def render_png(html_path, png_path, width, height):
     return written
 
 
+# ── catalog command ───────────────────────────────────────────────────────────
+def catalog_matches(entry, query):
+    if not query:
+        return True
+    hay = " ".join(str(entry.get(k, "")) for k in ("type", "name", "kind", "category", "what", "use_when")).lower()
+    return all(word in hay for word in query.lower().split())
+
+
+def catalog_list(entries, query):
+    current = None
+    shown = 0
+    for e in sorted(entries.values(), key=lambda e: (e["catalog"], e.get("category", ""), e["type"])):
+        if not catalog_matches(e, query):
+            continue
+        heading = f"{e['catalog']} · {e.get('category', 'Other')}"
+        if heading != current:
+            print(f"\n{heading}")
+            current = heading
+        print(f"  {e['type']:34} {e.get('name', '')}: {e.get('what', '')}")
+        if e.get("use_when"):
+            print(f"  {'':34} use when: {e['use_when']}")
+        shown += 1
+    print(f"\n{shown} building block(s). Use them as 'type: <type>' on a component.")
+
+
+def catalog_markdown(entries):
+    L = ["# Building block catalog", "",
+         "Generated by `blueprint.py catalog --write`. Edit the YAML files in this folder, not this page.", "",
+         "Use a building block on a component with `type:`; its name, role, icon and description are filled in automatically.", ""]
+    by_catalog = {}
+    for e in entries.values():
+        by_catalog.setdefault(e["catalog"], {}).setdefault(e.get("category", "Other"), []).append(e)
+    for title, cats in sorted(by_catalog.items()):
+        L += [f"## {title}", ""]
+        for cat, items in cats.items():
+            L += [f"### {cat}", "", "| Type | Name | What it is | Use when | Avoid when | Docs |", "|---|---|---|---|---|---|"]
+            for e in items:
+                docs = f"[docs]({e['docs']})" + (f" ({e['checked']})" if e.get("checked") else "") if e.get("docs") else ""
+                L.append(f"| `{e['type']}` | {cell(e.get('name', ''))} | {cell(e.get('what', ''))} | "
+                         f"{cell(e.get('use_when', ''))} | {cell(e.get('avoid_when', ''))} | {docs} |")
+            L.append("")
+    return "\n".join(L)
+
+
+SOFT_404 = ("couldn't find that page", "page not found", "page you requested", "this page does not exist")
+
+
+def check_links(urls, log):
+    """Return {url: problem} for links that look broken. Uses a headless browser when Playwright is installed."""
+    problems = {}
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        sync_playwright = None
+        log("note: Playwright not installed, checking links without a browser (some sites block this)")
+    if sync_playwright:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            page = browser.new_page(user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                                               "(KHTML, like Gecko) Chrome/130.0 Safari/537.36")
+            for url in urls:
+                try:
+                    resp = page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    page.wait_for_timeout(3500)       # let single-page docs sites render
+                    text = page.locator("body").inner_text(timeout=5000)[:4000].lower()
+                    status = resp.status if resp else 0
+                    if status == 404 or status >= 500 or any(s in text for s in SOFT_404):
+                        problems[url] = f"broken (HTTP {status})"
+                    elif status == 403:                # bot protection: a plain request is a second opinion
+                        try:
+                            http_get(url)
+                        except Exception:
+                            problems[url] = "blocked automated access (HTTP 403): open it by hand once"
+                    log(f"  {'ok ' if url not in problems else '!! '} {url}")
+                except Exception as e:
+                    problems[url] = f"could not load ({type(e).__name__})"
+                    log(f"  !!  {url}")
+            browser.close()
+        return problems
+    for url in urls:
+        try:
+            http_get(url)
+        except urllib.error.HTTPError as e:
+            problems[url] = f"HTTP {e.code}" + (": site blocks scripts, check by hand" if e.code == 403 else "")
+        except Exception as e:
+            problems[url] = f"could not load ({type(e).__name__})"
+    return problems
+
+
+def catalog_check(entries, links, log):
+    import datetime
+    today = datetime.date.today()
+    errors, warnings = [], []
+    for e in entries.values():
+        where = f"{e['file']} '{e['type']}'"
+        for field in ("name", "what"):
+            if not e.get(field):
+                errors.append(f"{where}: missing '{field}'")
+        if not e["type"].startswith("generic/"):
+            if not e.get("docs"):
+                warnings.append(f"{where}: no 'docs' link")
+            checked = str(e.get("checked", ""))
+            m = re.match(r"^(\d{4})-(\d{2})$", checked)
+            if not m:
+                warnings.append(f"{where}: 'checked' should be YYYY-MM, got '{checked}'")
+            else:
+                age = (today.year - int(m[1])) * 12 + today.month - int(m[2])
+                if age > 6:
+                    warnings.append(f"{where}: last checked {checked} ({age} months ago): review it")
+        for other in e.get("connects_with") or []:
+            if other not in entries:
+                errors.append(f"{where}: connects_with '{other}' is not in the catalog{suggest(other, list(entries))}")
+    if links:
+        urls = sorted({e["docs"] for e in entries.values() if e.get("docs")})
+        log(f"checking {len(urls)} links…")
+        for url, problem in check_links(urls, log).items():
+            users = ", ".join(e["type"] for e in entries.values() if e.get("docs") == url)
+            (warnings if "403" in problem else errors).append(f"{url} ({users}): {problem}")
+    return errors, warnings
+
+
 # ── CLI ───────────────────────────────────────────────────────────────────────
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="blueprint.py", description=__doc__.split("\n")[0])
-    ap.add_argument("command", choices=("build", "check"))
-    ap.add_argument("yaml", type=pathlib.Path)
-    ap.add_argument("--out", type=pathlib.Path, help="output folder (default: next to the YAML)")
-    ap.add_argument("--png", action="store_true", help="also write light and dark PNGs")
-    ap.add_argument("--offline", action="store_true", help="use cached icons only")
+    sub = ap.add_subparsers(dest="command", required=True)
+    b = sub.add_parser("build", help="write the diagram and ARCHITECTURE.md")
+    b.add_argument("yaml", type=pathlib.Path)
+    b.add_argument("--out", type=pathlib.Path, help="output folder (default: next to the YAML)")
+    b.add_argument("--png", action="store_true", help="also write light and dark PNGs")
+    b.add_argument("--offline", action="store_true", help="use cached icons only")
+    c = sub.add_parser("check", help="validate and lay out without writing files")
+    c.add_argument("yaml", type=pathlib.Path)
+    k = sub.add_parser("catalog", help="list, document or check the building block catalog")
+    k.add_argument("query", nargs="*", help="only show entries matching these words")
+    k.add_argument("--file", action="append", default=[], type=pathlib.Path, help="extra catalog file to include")
+    k.add_argument("--write", type=pathlib.Path, metavar="PATH", help="write the catalog as a Markdown page")
+    k.add_argument("--check", action="store_true", help="validate entries, dates and links")
+    k.add_argument("--no-links", action="store_true", help="with --check: skip the link check")
     args = ap.parse_args(argv)
 
     try:
+        if args.command == "catalog":
+            entries = load_catalog(args.file)
+            if args.check:
+                errors, warnings = catalog_check(entries, not args.no_links, print)
+                for w in warnings:
+                    print(f"warning: {w}")
+                for e in errors:
+                    print(f"error: {e}")
+                print(f"{len(entries)} entries, {len(errors)} errors, {len(warnings)} warnings")
+                return 1 if errors else 0
+            if args.write:
+                args.write.write_text(catalog_markdown(entries), encoding="utf-8")
+                print(f"wrote {args.write} ({len(entries)} entries)")
+                return 0
+            catalog_list(entries, " ".join(args.query))
+            return 0
+
         m = load(args.yaml)
         layout(m)
-        warnings = layout_warnings(m) + route(m)
+        warnings = m["warnings"] + layout_warnings(m) + route(m)
         for w in warnings:
             print(f"warning: {w}")
         if args.command == "check":

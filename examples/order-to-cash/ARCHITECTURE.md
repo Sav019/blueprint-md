@@ -15,7 +15,7 @@ Customers order in an Experience Cloud portal. Activated orders leave Salesforce
 - **Salesforce Org**: Single production org, Sales and Service Cloud licenses.
   - **Experience Cloud** (`portal`): customer portal
   - **Sales Cloud** (`sales`): accounts · orders
-  - **Order Events** (`events`): platform event
+  - **Order Events** (`events`): event bus
   - **Service Cloud** (`service`): cases
 - **MuleSoft Anypoint**: API-led connectivity, CloudHub 2.0.
   - **Order Process API** (`process`): process api
@@ -30,8 +30,10 @@ Customers order in an Experience Cloud portal. Activated orders leave Salesforce
 
 Self-service portal where customers browse prices and place orders.
 
+- **Building block:** [Experience Cloud](https://help.salesforce.com/s/articleView?id=experience.networks_overview.htm&type=5) (`salesforce/experience-cloud`): Portals, partner sites and customer self-service sites built on the org's data and security model.
 - **Role:** customer portal
 - **Part of:** Salesforce Org
+- **Not meant for:** High-traffic public marketing sites or storefronts (use a CMS or Commerce Cloud).
 - **Sends to:**
   - **Sales Cloud** (`sales`): creates order
 - **Receives from:**
@@ -41,9 +43,11 @@ Self-service portal where customers browse prices and place orders.
 
 System of record for accounts, contracts and orders. Owns the Order object.
 
+- **Building block:** [Sales Cloud](https://www.salesforce.com/sales/) (`salesforce/sales-cloud`): CRM for accounts, contacts, leads, opportunities, quotes and orders.
 - **Role:** accounts · orders
 - **Part of:** Salesforce Org
 - **Code:** `force-app/main/default/objects/Order`
+- **Not meant for:** Complex pricing, billing or fulfilment usually stays in an ERP or a dedicated revenue product.
 - **Sends to:**
   - **Order Events** (`events`): order activated. Record-triggered flow publishes Order_Sync__e.
 - **Receives from:**
@@ -56,9 +60,11 @@ System of record for accounts, contracts and orders. Owns the Order object.
 
 Published by a record-triggered flow when an order is activated.
 
-- **Role:** platform event
+- **Building block:** [Platform Event](https://developer.salesforce.com/docs/platform/platform-events/guide/platform-events-intro.html) (`salesforce/platform-event`): Publish/subscribe messages inside Salesforce and to external subscribers, with replay for a limited time.
+- **Role:** event bus
 - **Technology:** Order_Sync__e (high-volume platform event)
 - **Part of:** Salesforce Org
+- **Not meant for:** Request-reply calls that need an immediate answer, or bulk data loads.
 - **Sends to:**
   - **Order Process API** (`process`): subscribe, Pub/Sub API (gRPC), Order_Sync__e
 - **Receives from:**
@@ -68,8 +74,10 @@ Published by a record-triggered flow when an order is activated.
 
 Handles order complaints; agents see order and invoice status on the case.
 
+- **Building block:** [Service Cloud](https://www.salesforce.com/service/) (`salesforce/service-cloud`): Case management, omni-channel routing, knowledge and contact-center tooling for support teams.
 - **Role:** cases
 - **Part of:** Salesforce Org
+- **Not meant for:** Pure field work scheduling (use Field Service on top of it).
 - **Two-way with:**
   - **Sales Cloud** (`sales`): order lookup
 
@@ -77,8 +85,10 @@ Handles order complaints; agents see order and invoice status on the case.
 
 Maps Salesforce orders to SAP sales orders, handles retries and idempotency.
 
+- **Building block:** [Process API](https://docs.mulesoft.com/general/api-led-overview) (`mulesoft/process-api`): API-led layer that orchestrates business processes across systems and maps data between them.
 - **Role:** process api
 - **Part of:** MuleSoft Anypoint
+- **Not meant for:** Direct system access (that belongs in a system API).
 - **Sends to:**
   - **SAP System API** (`system`): create order, HTTPS / REST
 - **Receives from:**
@@ -88,8 +98,10 @@ Maps Salesforce orders to SAP sales orders, handles retries and idempotency.
 
 Thin wrapper over SAP OData services; the only component allowed to call SAP.
 
+- **Building block:** [System API](https://docs.mulesoft.com/general/api-led-overview) (`mulesoft/system-api`): API-led layer that exposes one backend system (ERP, database, Salesforce) through a stable interface.
 - **Role:** system api
 - **Part of:** MuleSoft Anypoint
+- **Not meant for:** Putting cross-system business logic inside it.
 - **Sends to:**
   - **SAP S/4HANA** (`erp`): OData, OData v4, OAuth 2.0, A_SalesOrder
 - **Receives from:**
@@ -110,6 +122,7 @@ System of record for pricing, fulfilment and invoicing.
 
 Purchasing agent at a customer account.
 
+- **Building block:** User (`generic/user`): A person who uses the system.
 - **Role:** buyer
 - **Sends to:**
   - **Experience Cloud** (`portal`): places order

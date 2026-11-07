@@ -34,21 +34,18 @@ groups:
 
 components:
   sales:
-    name: Sales Cloud
-    kind: accounts · orders
-    icon: salesforce
+    type: salesforce/sales-cloud        # building block from the catalog
     group: sf
     at: [1, 1]
     about: System of record for accounts and orders.
   events:
-    name: Order Events
-    kind: platform event
-    icon: lucide:zap
+    type: salesforce/platform-event
+    name: Order Events                  # project-specific name
     group: sf
     at: [2, 1]
   process:
+    type: mulesoft/process-api
     name: Order Process API
-    icon: lucide:git-merge
     group: mule
     at: [3.5, 1]
 
@@ -66,6 +63,21 @@ decisions:
 ```
 
 See the full example in [`examples/order-to-cash/`](examples/order-to-cash/): the [YAML](examples/order-to-cash/architecture.yaml), the [generated ARCHITECTURE.md](examples/order-to-cash/ARCHITECTURE.md) and the [interactive HTML](examples/order-to-cash/architecture.html). The full format is in [`skills/blueprint-md/references/format.md`](skills/blueprint-md/references/format.md).
+
+## Building block catalog
+
+The catalog lists the parts you can use, so people and agents share one vocabulary. Each entry says what the block is, when to use it, when not to, and links to the official documentation:
+
+```bash
+python3 skills/blueprint-md/scripts/blueprint.py catalog            # list everything
+python3 skills/blueprint-md/scripts/blueprint.py catalog event      # search
+```
+
+- **Browse it:** [`skills/blueprint-md/catalog/README.md`](skills/blueprint-md/catalog/README.md)
+- **Included:** Salesforce and MuleSoft (clouds, Flow, Apex, Platform Events, Change Data Capture, Pub/Sub API, Named Credentials, API-led layers…) and generic blocks (user, service, database, queue, scheduler…)
+- **Use it:** `type: salesforce/platform-event` on a component fills in name, role and icon, and ARCHITECTURE.md adds the description, docs link and what the block is not meant for
+- **Extend it:** add `catalog/<domain>.yaml` to the skill, or `catalogs: [my-blocks.yaml]` to one project
+- **Keep it current:** entries hold only stable facts and link to the official docs for details that change. Each entry has a `checked: YYYY-MM` date. `blueprint.py catalog --check` validates every entry, flags entries not reviewed for six months, and opens every docs link in a headless browser. A GitHub Action runs it every month and whenever the catalog changes.
 
 ## Use it with an AI agent
 
@@ -97,6 +109,8 @@ python3 skills/blueprint-md/scripts/blueprint.py check architecture.yaml
 
 ## Roadmap
 
+- [x] Building block catalog with docs links and automatic link checks
+- [ ] More catalogs: AWS, Azure, Google Cloud, SAP
 - [ ] Project scaffolding from the YAML (starting with Salesforce SFDX projects)
 - [ ] Mermaid and C4 export
 - [ ] Official AWS, Azure, Google Cloud and Salesforce architecture icon sets

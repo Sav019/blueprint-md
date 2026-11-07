@@ -21,61 +21,57 @@ groups:
     icon: sap
     color: gray
 
+# `type:` picks a building block from the catalog (run `blueprint.py catalog` to list them).
+# Name, role and icon come from the catalog unless you set them here.
 components:
   customer:
+    type: generic/user
     name: B2B Customer
     kind: buyer
-    icon: lucide:user
     at: [0, 1]
     about: Purchasing agent at a customer account.
 
   portal:
-    name: Experience Cloud
+    type: salesforce/experience-cloud
     kind: customer portal
-    icon: salesforce
     group: sf
     at: [1, 0]
     about: Self-service portal where customers browse prices and place orders.
   sales:
-    name: Sales Cloud
+    type: salesforce/sales-cloud
     kind: accounts · orders
-    icon: salesforce
     group: sf
     at: [1, 1]
     about: System of record for accounts, contracts and orders. Owns the Order object.
     code: force-app/main/default/objects/Order
   service:
-    name: Service Cloud
+    type: salesforce/service-cloud
     kind: cases
-    icon: salesforce
     group: sf
     at: [1, 2]
     about: Handles order complaints; agents see order and invoice status on the case.
   events:
+    type: salesforce/platform-event
     name: Order Events
-    kind: platform event
-    icon: lucide:zap
     group: sf
     at: [2, 1]
     tech: Order_Sync__e (high-volume platform event)
     about: Published by a record-triggered flow when an order is activated.
 
   process:
+    type: mulesoft/process-api
     name: Order Process API
-    kind: process api
-    icon: lucide:git-merge
     group: mule
     at: [3.5, 1]
     about: Maps Salesforce orders to SAP sales orders, handles retries and idempotency.
   system:
+    type: mulesoft/system-api
     name: SAP System API
-    kind: system api
-    icon: lucide:plug
     group: mule
     at: [4.5, 1]
     about: Thin wrapper over SAP OData services; the only component allowed to call SAP.
 
-  erp:
+  erp:                       # no catalog type: free components work too
     name: SAP S/4HANA
     kind: orders · invoices
     icon: sap

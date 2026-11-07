@@ -1,0 +1,30 @@
+name: Catalog check
+
+# Verifies every building-block entry and its docs link once a month,
+# and whenever the catalog changes. A failed run means a link broke or an entry is invalid.
+on:
+  schedule:
+    - cron: "0 6 1 * *"
+  workflow_dispatch:
+  pull_request:
+    paths: ["skills/blueprint-md/catalog/**", "skills/blueprint-md/scripts/**"]
+  push:
+    branches: [main]
+    paths: ["skills/blueprint-md/catalog/**", "skills/blueprint-md/scripts/**"]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml playwright
+      - run: python -m playwright install --with-deps chromium
+      - name: Check catalog entries and links
+        run: python skills/blueprint-md/scripts/blueprint.py catalog --check
+      - name: Catalog page is up to date
+        run: |
+          python skills/blueprint-md/scripts/blueprint.py catalog --write /tmp/catalog.md
+          diff -u skills/blueprint-md/catalog/README.md /tmp/catalog.md || (echo "Run: blueprint.py catalog --write skills/blueprint-md/catalog/README.md" && exit 1)
