@@ -98,17 +98,18 @@ python3 skills/blueprint-md/scripts/blueprint.py catalog event      # search
 - **Extend it:** add `catalog/<domain>.yaml` to the skill, or `catalogs: [my-blocks.yaml]` to one project
 - **Keep it current:** entries hold only stable facts and link to the official docs for details that change. Each entry has a `checked: YYYY-MM` date. `blueprint.py catalog --check` validates every entry, flags entries not reviewed for six months, and opens every docs link in a headless browser. A GitHub Action runs it every month and whenever the catalog changes.
 
-## Official cloud icons
+## Official vendor icons
 
-AWS, Azure and Google Cloud components use the vendors' **official architecture icons**, not community copies:
+AWS, Azure, Google Cloud and Salesforce components use the vendors' **official icons**, not community copies:
 
 | Vendor | Package | Write |
 |---|---|---|
 | AWS | [AWS Architecture Icons](https://aws.amazon.com/architecture/icons/) | `icon: aws:lambda` |
 | Microsoft Azure | [Azure architecture icons](https://learn.microsoft.com/azure/architecture/icons/) | `icon: azure:function apps` |
 | Google Cloud | [Google Cloud icons](https://cloud.google.com/icons) | `icon: gcp:bigquery` |
+| Salesforce | [Lightning Design System icons](https://www.lightningdesignsystem.com/icons/) (standard set) | `icon: slds:data_cloud` |
 
-Each package is downloaded once from the vendor's site into `~/.cache/blueprint-md/packs/` (the newest AWS and Azure release is found automatically) and indexed by name. Search it with `blueprint.py icons aws lambda`; refresh it with `--update`. Icons are only embedded into the diagrams you build and are never stored in this repo. Each vendor's terms apply to its icons.
+Each package is downloaded once from the vendor's site into `~/.cache/blueprint-md/packs/` (the newest AWS and Azure release is found automatically) and indexed by name. Search it with `blueprint.py icons aws lambda`; refresh it with `--update`. Salesforce icons come from the `@salesforce-ux/icons` npm package: each white glyph is used unchanged on the background colour the Design System defines for it, the way Salesforce shows them. Icons are only embedded into the diagrams you build and are never stored in this repo. Each vendor's terms apply to its icons; the Salesforce icons are © Salesforce, licensed [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/).
 
 ## Use it with an AI agent
 
@@ -145,7 +146,8 @@ python3 skills/blueprint-md/scripts/blueprint.py check architecture.yaml
 - [x] More catalogs: data platforms, enterprise SaaS, developer platforms, identity
 - [ ] Project scaffolding from the YAML (starting with Salesforce SFDX projects)
 - [ ] Mermaid and C4 export
-- [ ] Official Salesforce architecture icon set
+- [x] Official Salesforce icons (Lightning Design System, `slds:`)
+- [ ] Salesforce product logos for each cloud (Sales, Service, Marketing, Commerce)
 - [ ] Several views (overview and detail) from one model
 - [ ] Interactive canvas for editing with an agent
 

@@ -83,7 +83,7 @@ entries:
     name: Data Cloud
     kind: customer data
     category: Clouds & products
-    icon: salesforce
+    icon: slds:data_cloud
     what: Ingests and unifies customer data from many sources into profiles, segments and calculated insights.
     use_when: A unified customer view across systems, segmentation, or grounding data for AI.
     avoid_when: Simple point-to-point sync of a few objects (an integration is cheaper).
@@ -95,7 +95,7 @@ entries:
     name: Agentforce
     kind: ai agents
     category: Clouds & products
-    icon: salesforce
+    icon: slds:agent_astro
     what: AI agents that answer questions and take actions using org data, flows, Apex and prompt templates.
     use_when: Self-service or employee assistants that need to act on Salesforce data.
     avoid_when: Deterministic processes with no language understanding (use Flow or Apex).
@@ -107,7 +107,7 @@ entries:
     name: Field Service
     kind: field operations
     category: Clouds & products
-    icon: salesforce
+    icon: slds:work_order
     what: Work orders, scheduling, dispatch and a mobile app for technicians in the field.
     use_when: On-site service with appointments, crews and parts.
     avoid_when: Pure remote support (Service Cloud alone).
@@ -154,7 +154,7 @@ entries:
     name: Flow
     kind: automation
     category: Automation & code
-    icon: lucide:workflow
+    icon: slds:flow
     what: Declarative automation with record-triggered, scheduled, screen and autolaunched flows.
     use_when: Business logic and automation that admins should be able to maintain.
     avoid_when: Very complex logic, large data volumes or heavy callouts (use Apex).
@@ -166,7 +166,7 @@ entries:
     name: Apex
     kind: server-side code
     category: Automation & code
-    icon: lucide:code-xml
+    icon: slds:apex
     what: Salesforce's server-side language for triggers, services, batch jobs, REST endpoints and callouts.
     use_when: Complex logic, custom APIs, bulk processing and integrations that Flow can't express well.
     avoid_when: Simple automation that Flow can handle and admins should own.
@@ -178,7 +178,7 @@ entries:
     name: Lightning Web Components
     kind: ui components
     category: Automation & code
-    icon: lucide:layout-template
+    icon: slds:lightning_component
     what: Standards-based web components for custom UI in Lightning, Experience Cloud and mobile.
     use_when: Custom screens or interactions beyond standard pages.
     avoid_when: Standard record pages, dynamic forms or screen flows already do the job.
@@ -263,7 +263,7 @@ entries:
     name: Connected / External Client App
     kind: inbound auth
     category: Integration
-    icon: lucide:shield-check
+    icon: slds:connected_apps
     what: Registers an external application for OAuth access to Salesforce APIs, with scopes and policies.
     use_when: Any external system or middleware that calls Salesforce APIs.
     avoid_when: Sharing one integration user and app across unrelated systems.
@@ -288,7 +288,7 @@ entries:
     name: MuleSoft Anypoint Platform
     kind: integration
     category: MuleSoft
-    icon: lucide:workflow
+    icon: slds:mulesoft
     what: Integration platform to design, run and manage APIs and integrations.
     use_when: Use it as a group around Mule applications and APIs.
     avoid_when: A single simple point-to-point sync that the platform's own tools can handle.

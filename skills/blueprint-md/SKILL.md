@@ -55,6 +55,7 @@ Components sit on a grid: `at: [column, row]`, one step = 200 × 190 px (change 
 
 - a brand name such as `salesforce`, `sap`, `postgresql`, `react`: looked up in svgl, then devicon, then gilbarbara/logos
 - `aws:<name>`, `azure:<name>`, `gcp:<name>`: the vendor's **official architecture icons** (`aws:lambda`, `aws:Amazon-Simple-Storage-Service`, `azure:function apps`, `gcp:bigquery`). Each package is downloaded once from the vendor's site into `~/.cache/blueprint-md/packs/` and never committed. Search names with `blueprint.py icons aws lambda`. Google publishes unique icons only for core products; other Google Cloud products use their category icon (`gcp:Integration Services`, `gcp:Databases`…), as Google's guidelines ask. Catalog entries for AWS, Azure and Google Cloud already point to the right icon, so prefer `type:`.
+- `slds:<name>`: Salesforce's official **Lightning Design System** icons (standard set: `slds:data_cloud`, `slds:data_streams`, `slds:identifier`, `slds:segments`, `slds:flow`, `slds:apex`, `slds:agent_astro`). The glyph is shown on its official SLDS colour. Search names with `blueprint.py icons slds data`. Use them for Salesforce features; the `salesforce` logo stays for whole clouds and orgs.
 - `lucide:<name>` for concepts without a brand (`lucide:user`, `lucide:zap`, `lucide:database`, `lucide:clock`; see lucide.dev/icons)
 - `svgl:<name>`, `devicon:<name>` or `logos:<name>` to force one source
 - a URL or a local `.svg`/`.png` path (relative to the YAML)

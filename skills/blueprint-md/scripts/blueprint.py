@@ -458,6 +458,8 @@ def fetch_icon(spec):
         data = devicon(name)
     elif prefix == "logos":
         data = logos(name)
+    elif prefix == "slds":
+        data = slds_icon(name)
     elif prefix in PACK_SOURCES:
         data = pack_icon(prefix, name)
     else:
@@ -522,6 +524,44 @@ PACK_SOURCES = {
                      "https://services.google.com/fh/files/misc/category-icons.zip"]},
 }
 VENDOR_WORDS = {"aws": ("aws", "amazon"), "azure": ("azure", "microsoft"), "gcp": ("google", "cloud", "gcp")}
+
+
+# Salesforce Lightning Design System "standard" icons (CC BY-ND 4.0, © Salesforce). The white glyph is
+# used unchanged and placed on the background colour SLDS defines for it, as Salesforce shows them.
+SLDS_ICONS = "https://cdn.jsdelivr.net/npm/@salesforce-ux/icons@10.18.1"
+SLDS_TOKENS = "https://cdn.jsdelivr.net/npm/@salesforce-ux/design-system@2.264.3/design-tokens/dist/bg-standard.json"
+SLDS_LIST = "https://data.jsdelivr.com/v1/package/npm/@salesforce-ux/icons@10.18.1/flat"
+SLDS_DIR = "/dist/salesforce-lightning-design-system-icons/standard/"
+
+
+def load_slds(update=False, log=print):
+    index_file = pack_dir("slds") / "index.json"
+    if index_file.exists() and not update:
+        return json.loads(index_file.read_text())
+    log("downloading the Salesforce Lightning Design System icon list (one time)…")
+    files = json.loads(http_get(SLDS_LIST))["files"]
+    tokens = json.loads(http_get(SLDS_TOKENS))
+    icons = {}
+    for f in files:
+        if f["name"].startswith(SLDS_DIR) and f["name"].endswith(".svg"):
+            name = f["name"][len(SLDS_DIR):-4]
+            rgb = re.findall(r"\d+", tokens.get(name.upper(), ""))
+            icons[name] = "#%02x%02x%02x" % tuple(map(int, rgb[:3])) if len(rgb) >= 3 else "#747474"
+    index_file.parent.mkdir(parents=True, exist_ok=True)
+    index_file.write_text(json.dumps({"source": SLDS_ICONS, "icons": icons}, indent=1))
+    return {"icons": icons}
+
+
+def slds_icon(name):
+    icons = load_slds()["icons"]
+    key = name.strip().lower().replace("-", "_").replace(" ", "_").removeprefix("standard/")
+    if key not in icons:
+        raise LookupError(f"no SLDS standard icon named '{name}'{suggest(key, list(icons))}")
+    glyph = http_get(f"{SLDS_ICONS}{SLDS_DIR}{key}.svg")
+    b64 = base64.b64encode(glyph).decode()
+    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="20" '
+            f'fill="{icons[key]}"/><image x="8" y="8" width="84" height="84" '
+            f'href="data:image/svg+xml;base64,{b64}"/></svg>').encode()
 
 
 def pack_dir(vendor):
@@ -602,6 +642,9 @@ def pack_icon(vendor, name):
 
 
 def pack_search(vendor, words):
+    if vendor == "slds":
+        names = sorted(load_slds()["icons"])
+        return [n for n in names if all(norm(w) in norm(n) for w in words)]
     icons = load_pack(vendor)["icons"]
     names = sorted({p.split("::", 1)[1].rsplit("/", 1)[-1] for p in icons.values()})
     wanted = [norm(w) for w in words]
@@ -1027,8 +1070,8 @@ def main(argv=None):
     b.add_argument("--offline", action="store_true", help="use cached icons only")
     c = sub.add_parser("check", help="validate and lay out without writing files")
     c.add_argument("yaml", type=pathlib.Path)
-    ic = sub.add_parser("icons", help="search the official AWS / Azure / Google Cloud icon packs")
-    ic.add_argument("vendor", choices=sorted(PACK_SOURCES))
+    ic = sub.add_parser("icons", help="search the official AWS / Azure / Google Cloud / Salesforce (SLDS) icons")
+    ic.add_argument("vendor", choices=sorted([*PACK_SOURCES, "slds"]))
     ic.add_argument("words", nargs="*", help="only show icon files containing these words")
     ic.add_argument("--update", action="store_true", help="download the newest package again")
     k = sub.add_parser("catalog", help="list, document or check the building block catalog")
@@ -1043,14 +1086,14 @@ def main(argv=None):
         if args.command == "icons":
             try:
                 if args.update:
-                    load_pack(args.vendor, update=True)
+                    load_slds(update=True) if args.vendor == "slds" else load_pack(args.vendor, update=True)
                 hits = pack_search(args.vendor, args.words)
             except (LookupError, OSError) as e:
                 raise BlueprintError(f"error: {e}")
             for name in hits[:200]:
                 print(f"  {name}")
             print(f"{len(hits)} icon file(s). Use them as 'icon: {args.vendor}:<name>' (the name part is enough, "
-                  f"e.g. {args.vendor}:{'lambda' if args.vendor == 'aws' else 'function apps' if args.vendor == 'azure' else 'bigquery'}).")
+                  f"e.g. {args.vendor}:{ {'aws': 'lambda', 'azure': 'function apps', 'gcp': 'bigquery'}.get(args.vendor, 'data_cloud')}).")
             return 0
         if args.command == "catalog":
             entries = load_catalog(args.file)
