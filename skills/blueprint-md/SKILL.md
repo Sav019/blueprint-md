@@ -23,7 +23,7 @@ python3 <skill>/scripts/blueprint.py check architecture.yaml   # warnings only, 
 ## Workflow
 
 0. **Know the building blocks.** Before designing, list the catalog: `blueprint.py catalog` (all) or `blueprint.py catalog <words>` (search, e.g. `catalog event`, `catalog salesforce api`). Each entry says what the block is, when to use it, when not to, and links to the official docs. Base your proposals on these entries. When a decision depends on details that change between releases (limits, retention, pricing), open the entry's docs link to confirm them instead of relying on memory.
-1. **Understand the system.** Choose the mode from how the user asks:
+1. **Understand the system.** If the user brings business requirements and the solution itself is still open (which tools, which approach), use the **blueprint-architect** skill first: it drafts and compares options, and the chosen one comes back here to be drawn. Otherwise choose the mode from how the user asks:
    - **Guided** (default when anything important is open): ask a few focused questions, at most 3–4 at a time. Typical ones: which systems are involved, who uses it, data volumes, real-time vs. batch, which system owns which data, authentication, middleware, hosting. For each real architecture choice, offer 2–3 options with their trade-offs and a recommendation, and let the user decide.
    - **Auto** (the user says "just draw it" or gives a complete description): decide sensibly yourself and record every non-obvious choice as a decision with `status: proposed` so the user can review it.
 2. **Write `architecture.yaml`** in the user's project folder (or where they ask). The format is in `references/format.md`; read it before writing the first file.

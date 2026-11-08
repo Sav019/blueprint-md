@@ -113,15 +113,29 @@ Each package is downloaded once from the vendor's site into `~/.cache/blueprint-
 
 ## Use it with an AI agent
 
-blueprint-md is an [agent skill](https://agentskills.io). Install it for Claude Code:
+The repo contains two [agent skills](https://agentskills.io) that work as a pair:
+
+| Skill | Phase | What it does |
+|---|---|---|
+| **blueprint-architect** | think | Acts as a senior architect: turns business requirements and constraints (licensed tools, platforms, budget, skills) into numbered requirements, drafts 2–4 real solution options, checks each against every requirement, recommends one and lets you decide. Writes `architecture-options.md`. |
+| **blueprint-md** | draw | Turns the chosen option into `architecture.yaml`, the diagram and `ARCHITECTURE.md`; the rejected options become decision records. |
+
+Install both for Claude Code:
 
 ```bash
 git clone https://github.com/Sav019/blueprint-md.git
 mkdir -p ~/.claude/skills
+ln -s "$(pwd)/blueprint-md/skills/blueprint-architect" ~/.claude/skills/blueprint-architect
 ln -s "$(pwd)/blueprint-md/skills/blueprint-md" ~/.claude/skills/blueprint-md
 ```
 
-Then just ask:
+Start from requirements:
+
+> /blueprint-architect Our service agents need answers from PDF and HTML manuals stored in Google Cloud Storage. We have Data 360 and Agentforce, no new vendors. Some manuals are HR-only.
+
+The agent lists the requirements and constraints, asks what is still open, compares the options and recommends one. After you choose, it draws the result with blueprint-md.
+
+Or go straight to the drawing:
 
 > Let's design the architecture for syncing orders from Salesforce to SAP. Ask me what you need to know.
 
