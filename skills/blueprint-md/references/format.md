@@ -40,6 +40,21 @@ connections:                          # optional
 flows:                                # optional, ordered steps of a scenario
   Order placed online: [customer, portal, sales, events]
 
+walkthroughs:                         # optional, explained scenarios for walkthrough.html
+  - title: Place an order             # tab name in the player
+    summary: What the scenario shows. # optional
+    steps:
+      - from: customer                # a step moves along the connection between two components
+        to: portal
+        title: Submit the cart        # short, shown on the diagram and in the step list
+        via: REST POST /orders        # optional: operation, protocol, event or queue
+        detail: >                     # optional: what happens and why; `backticks` render as code
+          The portal validates the cart and creates the order.
+        code: [src/portal/orders.ts]  # optional: files involved, checked next to the YAML or in a parent folder
+      - at: portal                    # a step that stays inside one component
+        title: Show confirmation
+# walkthroughs: walkthroughs.yaml     # or keep them in their own file (a list, or a mapping with 'walkthroughs:')
+
 decisions:                            # optional, lightweight decision records
   - title: Platform Events instead of polling
     status: accepted                  # proposed | accepted | superseded …
@@ -104,4 +119,12 @@ Only `name` and `what` are required. Non-generic entries should have `docs` and 
 
 ## ARCHITECTURE.md sections
 
-At a glance · Structure (group tree) · Components (about, building block with docs link, role, technology, group, code path, what it is not meant for, and Sends to / Receives from / Two-way with / Linked with) · Connections table · Flows · Decisions · Notes for coding agents.
+At a glance · Structure (group tree) · Components (about, building block with docs link, role, technology, group, code path, what it is not meant for, and Sends to / Receives from / Two-way with / Linked with) · Connections table · Flows · Walkthroughs · Decisions · Notes for coding agents.
+
+## walkthrough.html
+
+Written by `build` whenever the YAML has `walkthroughs:` or `flows:`. It is the diagram plus a player panel: each step highlights its components, animates the connection between them (in the step's direction, also against the arrow), leaves earlier steps as a faint trail and shows title, `via`, detail and code paths. Explicit walkthroughs come first; every flow without a walkthrough of the same title becomes a simple scenario whose step titles are the connection labels.
+
+- A step between two components without a connection is drawn as a dashed virtual line and `build` warns. Add the connection if it exists in the system.
+- Controls: Prev / Play / Next, `←` `→`, `space`, `1`–`9` for the scenario, `f` fit / 100 %, `esc` reset. `walkthrough.html#2-5` opens scenario 2 at step 5.
+- The diagram page links to the walkthrough in its footer.

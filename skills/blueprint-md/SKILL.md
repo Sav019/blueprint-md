@@ -1,6 +1,6 @@
 ---
 name: blueprint-md
-description: "Design a software or integration architecture with the user and capture it as one architecture.yaml, then build a diagram (HTML/PNG with real logos) and an ARCHITECTURE.md that coding agents can follow. Use when the user wants an architecture, system or integration diagram or a tech stack overview, wants to brainstorm or decide on an architecture, or wants an architecture written down as instructions for building a project, including Salesforce, MuleSoft, cloud and SaaS integrations."
+description: "Design a software or integration architecture with the user and capture it as one architecture.yaml, then build a diagram (HTML/PNG with real logos), an interactive step-by-step walkthrough of the main scenarios, and an ARCHITECTURE.md that coding agents can follow. Use when the user wants an architecture, system or integration diagram or a tech stack overview, wants to see step by step what happens in a system (for example when a user performs an action), wants to brainstorm or decide on an architecture, or wants an architecture written down as instructions for building a project, including Salesforce, MuleSoft, cloud and SaaS integrations."
 license: MIT
 compatibility: Python 3.9+ with PyYAML; network access to fetch icons on first use; Playwright + Chromium for PNG output
 ---
@@ -11,7 +11,8 @@ One YAML file describes the architecture. One command turns it into:
 
 - `architecture.html`: a self-contained diagram (light/dark, hover a node for details)
 - `architecture.png` and `architecture-dark.png` (with `--png`)
-- `ARCHITECTURE.md`: every component, what it does, what it talks to and why, plus flows and decisions, written for coding agents
+- `ARCHITECTURE.md`: every component, what it does, what it talks to and why, plus flows, walkthroughs and decisions, written for coding agents
+- `walkthrough.html`: an interactive step-by-step tour of the main scenarios on the same diagram (written when the YAML has `walkthroughs:` or `flows:`)
 
 The YAML is the source of truth. Never edit the generated files by hand.
 
@@ -28,8 +29,9 @@ python3 <skill>/scripts/blueprint.py check architecture.yaml   # warnings only, 
    - **Auto** (the user says "just draw it" or gives a complete description): decide sensibly yourself and record every non-obvious choice as a decision with `status: proposed` so the user can review it.
 2. **Write `architecture.yaml`** in the user's project folder (or where they ask). The format is in `references/format.md`; read it before writing the first file.
 3. **Build and look.** Run `build ... --png`, fix every warning, then open the PNG and check it yourself: no line through text, labels readable, groups not overlapping, nothing cramped. Rearrange `at:` positions and rebuild until it is clean.
-4. **Deliver** the diagram and `ARCHITECTURE.md`. Mention that changes go into the YAML followed by a rebuild.
-5. **Iterate.** For every change the user asks for, edit the YAML, rebuild, look again.
+4. **Write walkthroughs** for the 2–5 scenarios users care most about (see below), rebuild, and fix every walkthrough warning.
+5. **Deliver** the diagram, `walkthrough.html` and `ARCHITECTURE.md`. Mention that changes go into the YAML followed by a rebuild.
+6. **Iterate.** For every change the user asks for, edit the YAML, rebuild, look again.
 
 ## Writing a good architecture.yaml
 
@@ -40,6 +42,17 @@ python3 <skill>/scripts/blueprint.py check architecture.yaml   # warnings only, 
 - **Flows** list the steps of the main scenarios. **Decisions** capture every real choice: context, decision, alternatives, consequences. The user's answers in guided mode become decisions.
 - **notes:** holds project conventions for coding agents (repo layout, naming, security rules).
 - Component ids are stable names that coding agents reuse for folders and modules: short, lowercase, no spaces (`order-api`, `crm`).
+
+## Walkthroughs
+
+`walkthroughs:` turns scenarios into an interactive tour (`walkthrough.html`): every step moves along one connection (`from:`/`to:`) or stays in one component (`at:`), with a short title, an optional `via:` (operation, protocol, event, queue), a `detail:` and the `code:` files involved. Format in `references/format.md`. Plain `flows:` also appear in the tour, titled by connection labels, so even a quick architecture gets one.
+
+- Pick the scenarios a newcomer would ask about: the main business flow end to end, then the most important secondary ones (an edit or admin task, an async or streaming path, an integration).
+- One step = one hop that someone could point at in the code. Include the return path (response, event, subscription) so the scenario ends where the user sees the result.
+- `detail:` says what happens and why in 1–3 sentences: validations, which data is read or written, retries, statuses, limits. Name real identifiers in `backticks` (operations, tables, classes, events).
+- For an existing system, read the code before writing a step and list the files in `code:`; never describe behaviour you have not seen. A step without a matching connection usually means the diagram is missing (or wrongly has) a connection: fix the YAML, not the step.
+- Long walkthroughs can live in their own file: `walkthroughs: walkthroughs.yaml`.
+- After building, open `walkthrough.html` and click through each scenario, or check it headless with Playwright (no page errors; no step drawn as a dashed virtual line unless intended).
 
 ## Layout
 

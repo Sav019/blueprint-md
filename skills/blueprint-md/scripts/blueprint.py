@@ -7,9 +7,9 @@ Usage:
   python3 blueprint.py catalog [words…] [--write PATH] [--check] [--no-links]
   python3 blueprint.py icons aws|azure|gcp [words…] [--update]
 
-build   writes <name>.html (self-contained diagram), ARCHITECTURE.md and, with --png,
-        <name>.png + <name>-dark.png (needs Playwright: pip install playwright &&
-        python3 -m playwright install chromium)
+build   writes <name>.html (self-contained diagram), ARCHITECTURE.md, walkthrough.html (when the
+        YAML has walkthroughs or flows) and, with --png, <name>.png + <name>-dark.png (needs
+        Playwright: pip install playwright && python3 -m playwright install chromium)
 check   parses, lays out and routes the diagram and prints warnings without writing files
 catalog lists the building blocks (filter with words), writes them as a Markdown page,
         or checks entries, review dates and docs links
@@ -32,6 +32,9 @@ try:
     import yaml
 except ImportError:
     sys.exit("blueprint-md needs PyYAML: pip install pyyaml")
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import walkthrough  # noqa: E402
 
 # ── geometry (px) ─────────────────────────────────────────────────────────────
 TILE = 60                 # icon tile is TILE x TILE, at the top of a node
@@ -158,14 +161,66 @@ def load(path):
         bad = [s for s in steps or [] if s not in comps]
         if bad:
             errors.append(f"flow '{name}': unknown component(s) {', '.join(bad)}")
-        flows.append({"name": name, "steps": steps or []})
+        flows.append({"name": str(name), "steps": steps or []})
+
+    walkthroughs = load_walkthroughs(path, data.get("walkthroughs"), comps, conns, errors, warnings)
 
     if errors:
         raise BlueprintError("\n".join(f"error: {e}" for e in errors))
     return {"title": data.get("title", path.stem), "summary": data.get("summary", ""),
             "grid": grid, "groups": groups, "comps": comps, "conns": conns, "flows": flows,
+            "walkthroughs": walkthroughs,
             "decisions": data.get("decisions") or [], "notes": data.get("notes", ""),
             "legend": data.get("legend") or {}, "source": path.name, "warnings": warnings}
+
+
+def load_walkthroughs(path, raw, comps, conns, errors, warnings):
+    """Parse `walkthroughs:`, given inline as a list or as a YAML file next to architecture.yaml."""
+    if isinstance(raw, str):
+        try:
+            raw = yaml.safe_load((path.parent / raw).read_text(encoding="utf-8")) or []
+        except (OSError, yaml.YAMLError) as e:
+            errors.append(f"walkthroughs: cannot read '{raw}': {e}")
+            return []
+        if isinstance(raw, dict):
+            raw = raw.get("walkthroughs") or []
+    pairs = {frozenset((e["src"], e["dst"])) for e in conns}
+    roots = [path.parent.resolve(), *path.parent.resolve().parents]
+    out = []
+    for i, w in enumerate(raw or [], 1):
+        if not isinstance(w, dict) or not w.get("title"):
+            errors.append(f"walkthrough #{i}: needs 'title' and 'steps'")
+            continue
+        steps = []
+        for j, s in enumerate(w.get("steps") or [], 1):
+            where = f"walkthrough '{w['title']}' step {j}"
+            if not isinstance(s, dict):
+                errors.append(f"{where}: write it as 'from: a, to: b' or 'at: a' with a title")
+                continue
+            ids = [s.get("at")] if s.get("at") else [s.get("from"), s.get("to")]
+            bad = [str(x) for x in ids if x not in comps]
+            if bad:
+                errors.append(f"{where}: unknown component(s) {', '.join(bad)}{suggest(bad[0], list(comps))}")
+                continue
+            if len(ids) == 2 and frozenset(ids) not in pairs:
+                warnings.append(f"{where}: no connection between '{ids[0]}' and '{ids[1]}' "
+                                f"(drawn as a dashed virtual line); add it to connections if it exists")
+            code = s.get("code") or []
+            code = [str(c) for c in (code if isinstance(code, list) else [code])]
+            for c in code:
+                if not any((r / c).exists() for r in roots):
+                    warnings.append(f"{where}: code path '{c}' not found next to the YAML or in a parent folder")
+            default = (comps[ids[0]]["name"] if len(ids) == 1
+                       else f"{comps[ids[0]]['name']} → {comps[ids[1]]['name']}")
+            steps.append({"from": s.get("from"), "to": s.get("to"), "at": s.get("at"),
+                          "title": str(s.get("title") or default), "via": str(s.get("via") or ""),
+                          "detail": " ".join(str(s.get("detail") or "").split()), "code": code})
+        if not steps:
+            errors.append(f"walkthrough '{w['title']}': has no steps")
+            continue
+        out.append({"title": str(w["title"]), "summary": " ".join(str(w.get("summary") or "").split()),
+                    "steps": steps})
+    return out
 
 
 # ── layout ────────────────────────────────────────────────────────────────────
@@ -700,6 +755,7 @@ svg.edges{position:absolute;inset:0;pointer-events:none}
 .legend i{display:inline-block;width:28px;margin-right:7px;vertical-align:middle;border-top:1.6px solid var(--edge)}
 .legend i.primary{border-color:var(--accent)}.legend i.dashed{border-top-style:dashed}
 footer{margin-top:28px;font:11px var(--mono);color:var(--muted)}
+footer a{color:var(--accent)}
 """ + "\n".join(groups)
 
 
@@ -724,7 +780,8 @@ def render_html(m, icons):
         cls = "edge" + (" primary" if e["primary"] else "") + (" dashed" if e["dashed"] else "")
         marks = (' marker-end="url(#arrow)"' if e["end_arrow"] else "") + \
                 (' marker-start="url(#arrow)"' if e["start_arrow"] else "")
-        svg.append(f'<path class="{cls}" d="{d}"{marks}><title>{esc(edge_title(m, e))}</title></path>')
+        svg.append(f'<path class="{cls}" d="{d}"{marks} data-from="{esc(e["src"])}" data-to="{esc(e["dst"])}">'
+                   f'<title>{esc(edge_title(m, e))}</title></path>')
         if e.get("label_pos"):
             x, y, anchor = e["label_pos"]
             svg.append(f'<text class="elabel{" primary" if e["primary"] else ""}" x="{x:.0f}" y="{y:.0f}" '
@@ -747,6 +804,7 @@ def render_html(m, icons):
     legend = "".join(f'<span><i class="{k}"></i>{esc(names[k])}</span>'
                      for k in ("primary", "default", "dashed") if k in used)
     summary = f'<p class="summary">{esc(m["summary"])}</p>' if m["summary"] else ""
+    tour = ' · <a href="walkthrough.html">step-by-step walkthrough</a>' if walkthrough.scenarios(m) else ""
     return f"""<!doctype html>
 <html lang="en" data-theme="light"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -759,7 +817,7 @@ def render_html(m, icons):
 {chr(10).join(out)}
 </div></div>
 <div class="legend">{legend}</div>
-<footer>Generated from {esc(m["source"])} by blueprint-md · hover a component for details</footer>
+<footer>Generated from {esc(m["source"])} by blueprint-md · hover a component for details{tour}</footer>
 </div></body></html>
 """
 
@@ -803,6 +861,7 @@ def render_markdown(m, image):
     count = lambda n, word: f"{n} {word}{'' if n == 1 else 's'}"
     glance = [count(len(comps), "component"), count(len(m["groups"]), "group"), count(len(conns), "connection")]
     glance += [count(len(m["flows"]), "flow")] if m["flows"] else []
+    glance += [count(len(m["walkthroughs"]), "walkthrough")] if m["walkthroughs"] else []
     glance += [count(len(m["decisions"]), "decision")] if m["decisions"] else []
     L += ["## At a glance", "", "- " + ", ".join(glance), ""]
 
@@ -877,6 +936,8 @@ def render_markdown(m, image):
                 what = f": {e['label']}" if e and e["label"] else ("" if e else " (no direct connection in the diagram)")
                 L.append(f"{i}. {comps[a]['name']} → {comps[b]['name']}{what}")
             L.append("")
+
+    L += walkthrough.markdown(m)
 
     if m["decisions"]:
         L += ["## Decisions", ""]
@@ -1125,8 +1186,13 @@ def main(argv=None):
         icons = resolve_icons(m, args.yaml.parent, args.offline, print)
         stem = args.yaml.stem
         html_path = out / f"{stem}.html"
-        html_path.write_text(render_html(m, icons), encoding="utf-8")
+        diagram = render_html(m, icons)
+        html_path.write_text(diagram, encoding="utf-8")
         print(f"wrote {html_path}")
+        if walkthrough.scenarios(m):
+            tour_path = out / "walkthrough.html"
+            tour_path.write_text(walkthrough.render_walkthrough(diagram, m, html_path.name), encoding="utf-8")
+            print(f"wrote {tour_path}")
         image = None
         if args.png:
             for p in render_png(html_path, out / f"{stem}.png", m["width"], m["height"]):

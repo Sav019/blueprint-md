@@ -15,11 +15,13 @@ Diagrams drawn by hand go stale, and pictures mean nothing to a coding agent. bl
 
 ```
 architecture.yaml  ──build──▶  architecture.html / .png   for people
+                         ├──▶  walkthrough.html           step-by-step tour of the main scenarios
                          └──▶  ARCHITECTURE.md            for coding agents
 ```
 
 - **Readable and diff-able:** the architecture lives in git next to the code.
 - **Meaningful connections:** every line says what flows, over which protocol, with which payload.
+- **Step-by-step walkthroughs:** `walkthroughs:` (or plain `flows:`) become an interactive tour that animates each step on the diagram and explains what happens, with the code files involved.
 - **Decisions included:** context, choice, alternatives and consequences are part of the file and the document.
 - **Agent-ready:** hand `ARCHITECTURE.md` to Claude Code, Cursor or Codex as the plan for building the project.
 
