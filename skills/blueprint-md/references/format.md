@@ -128,3 +128,4 @@ Written by `build` whenever the YAML has `walkthroughs:` or `flows:`. It is the 
 - A step between two components without a connection is drawn as a dashed virtual line and `build` warns. Add the connection if it exists in the system.
 - Controls: Prev / Play / Next, `←` `→`, `space`, `1`–`9` for the scenario, `f` fit / 100 %, `esc` reset. `walkthrough.html#2-5` opens scenario 2 at step 5.
 - The diagram page links to the walkthrough in its footer.
+- `build --gif` records the first scenario as `walkthrough.gif` and `walkthrough-dark.gif` (Playwright + Pillow). `window.walkthrough` (`select`, `go`, `fit`, `pause`, `dot`) lets other scripts drive the player.

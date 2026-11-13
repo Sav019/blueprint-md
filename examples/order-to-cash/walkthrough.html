@@ -198,7 +198,7 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     });
   };
 
-  let sIdx = 0, i = -1, timer = null, raf = null, fit = false;
+  let sIdx = 0, i = -1, timer = null, raf = null, fit = false, cur = null;
   const tabs = $('.wt-tabs', panel), list = $('.wt-list', panel);
   DATA.scenarios.forEach((s, k) => {
     const b = document.createElement('button');
@@ -244,6 +244,7 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     });
 
     cancelAnimationFrame(raf);
+    cur = null;
     const sp = stepPath(st);
     active.style.display = dot.style.display = sp ? '' : 'none';
     if (sp) {
@@ -257,7 +258,8 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     callout.textContent = '';
     const num = document.createElement('b'); num.textContent = i + 1;
     callout.append(num, st.title);
-    callout.style.left = target.x1 + 10 + 'px';
+    const right = target.x1 + 10 + callout.offsetWidth > parseFloat(canvas.style.width);
+    callout.style.left = (right ? target.x0 - 10 - callout.offsetWidth : target.x1 + 10) + 'px';
     callout.style.top = target.y0 - 34 + 'px';
 
     $('.wt-route', panel).textContent = st.at ? nodes[st.at].name : `${nodes[st.from].name}  →  ${nodes[st.to].name}`;
@@ -277,15 +279,17 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     reveal(ids);
   }
 
+  function place(t) {
+    if (!cur) return;
+    const p = active.getPointAtLength(cur.len * Math.min(1, Math.max(0, cur.rev ? 1 - t : t)));
+    dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y);
+    dot.style.opacity = t > 1 ? 0 : 1;
+  }
+
   function animate(rev) {
-    const len = active.getTotalLength(), dur = Math.min(2200, 700 + len * 1.4), t0 = performance.now();
-    const tick = (now) => {
-      const t = ((now - t0) % (dur + 400)) / dur;
-      const p = active.getPointAtLength(len * Math.min(1, rev ? 1 - t : t));
-      dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y);
-      dot.style.opacity = t > 1 ? 0 : 1;
-      raf = requestAnimationFrame(tick);
-    };
+    cur = { len: active.getTotalLength(), rev };
+    const dur = Math.min(2200, 700 + cur.len * 1.4), t0 = performance.now();
+    const tick = (now) => { place(((now - t0) % (dur + 400)) / dur); raf = requestAnimationFrame(tick); };
     raf = requestAnimationFrame(tick);
   }
 
@@ -336,6 +340,16 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     else if (e.key === 'Escape') reset();
     else if (/^[1-9]$/.test(e.key) && DATA.scenarios[+e.key - 1]) selectScenario(+e.key - 1);
   });
+
+  // Scripting hook, used by `build --gif` to record frames.
+  window.walkthrough = {
+    steps: (k) => DATA.scenarios[k].steps,
+    select: selectScenario,
+    go: (n) => { stop(); go(n); },
+    fit: setFit,
+    pause: () => cancelAnimationFrame(raf),
+    dot: place,
+  };
 
   const m = location.hash.match(/^#(\d+)-(\d+)$/);
   setFit(true);

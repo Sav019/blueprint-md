@@ -52,6 +52,7 @@ python3 <skill>/scripts/blueprint.py check architecture.yaml   # warnings only, 
 - `detail:` says what happens and why in 1–3 sentences: validations, which data is read or written, retries, statuses, limits. Name real identifiers in `backticks` (operations, tables, classes, events).
 - For an existing system, read the code before writing a step and list the files in `code:`; never describe behaviour you have not seen. A step without a matching connection usually means the diagram is missing (or wrongly has) a connection: fix the YAML, not the step.
 - Long walkthroughs can live in their own file: `walkthroughs: walkthroughs.yaml`.
+- `build --gif` records the first walkthrough as `walkthrough.gif` / `walkthrough-dark.gif` (needs Playwright and Pillow), handy for a README or slides. Put the scenario that best explains the system first.
 - After building, open `walkthrough.html` and click through each scenario, or check it headless with Playwright (no page errors; no step drawn as a dashed virtual line unless intended).
 
 ## Layout

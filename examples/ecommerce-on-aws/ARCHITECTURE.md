@@ -8,7 +8,7 @@ Shoppers browse and buy through CloudFront and API Gateway. Containerised catalo
 
 ## At a glance
 
-- 21 components, 3 groups, 20 connections, 3 flows, 5 decisions
+- 21 components, 3 groups, 20 connections, 3 flows, 1 walkthrough, 5 decisions
 
 ## Structure
 
@@ -354,6 +354,29 @@ Third-party warehouse that picks, packs and ships. Exposes a REST API and sends 
 1. Order Events → Data Lake: Firehose
 2. Data Lake → Nightly ETL: nightly
 3. Nightly ETL → Snowflake: load
+
+## Walkthroughs
+
+Step-by-step scenarios; `walkthrough.html` plays them on the diagram.
+
+### Shopper places an order
+
+From the Buy button to the parcel leaving the warehouse. The API call ends after checkout publishes OrderPlaced; everything after that reacts to the event on its own.
+
+1. **Click "Buy now"** (Shopper → Amazon CloudFront; HTTPS POST /api/orders): The storefront sends the order with the shopper's JWT. AWS WAF on CloudFront filters bots and abuse.
+2. **Route /api/* to the Store API** (Amazon CloudFront → Store API): CloudFront forwards API paths to API Gateway; static files never reach it.
+3. **Verify the shopper** (Store API → Customer Accounts; JWT authorizer): API Gateway checks the Cognito token and throttles per client before any service runs.
+4. **Place the order** (Store API → Order Service; VPC link): The request enters the private subnets; the Order Service owns orders and stock.
+5. **Read the cart** (Order Service → Carts): The cart is loaded from DynamoDB by session id.
+6. **Reserve stock** (Order Service → Orders DB; SQL transaction): Order, order lines and the stock reservation are written in one Aurora transaction.
+7. **Start checkout** (Order Service → Checkout; StartSyncExecution (orderId, amount)): An Express workflow takes over payment, stock confirmation and publishing.
+8. **Charge the card** (Checkout → Stripe Payments; REST, idempotency key = orderId): Stripe confirms the Payment Intent. If the payment fails, the workflow's compensation path releases the reserved stock and the shopper sees the error.
+9. **Publish OrderPlaced** (Checkout → Order Events; EventBridge PutEvents): One event for every consumer; the API returns the order number to the shopper now.
+10. **Send the confirmation** (Order Events → Notifications; rule → SNS): The shopper gets the order confirmation by email or SMS.
+11. **Archive the event** (Order Events → Data Lake; rule → Firehose): Every order event lands in S3 as Parquet for the nightly reporting.
+12. **Queue for fulfilment** (Order Events → Fulfilment Queue; rule → SQS): The queue absorbs peaks; orders the partner rejects go to a dead-letter queue.
+13. **Pick up the order** (Fulfilment Queue → Fulfilment): The Fulfilment function polls the queue in batches. Handlers are idempotent because events can arrive twice.
+14. **Ship it** (Fulfilment → Logistics Partner; REST, OAuth 2.0): The 3PL picks and packs; the function publishes OrderShipped with the tracking number.
 
 ## Decisions
 

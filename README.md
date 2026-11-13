@@ -2,12 +2,14 @@
 
 **Architecture as code, for people and coding agents.**
 
-Describe a system in one small YAML file, or let your AI agent design it with you. blueprint-md turns that file into a clean architecture diagram with real logos, plus an `ARCHITECTURE.md` that tells a coding agent exactly what each component does and what it may talk to.
+Describe a system in one small YAML file, or let your AI agent design it with you. blueprint-md turns that file into a clean architecture diagram with real logos, an interactive step-by-step walkthrough of what happens when someone uses the system, plus an `ARCHITECTURE.md` that tells a coding agent exactly what each component does and what it may talk to.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="examples/ecommerce-on-aws/architecture-dark.png">
-  <img alt="Online store on AWS: shoppers come in through CloudFront and API Gateway, catalog and order services run on Fargate inside a VPC, a Step Functions checkout charges Stripe and publishes OrderPlaced to EventBridge, which feeds fulfilment through SQS and Lambda to a logistics partner, notifications through SNS, and a nightly S3 and Glue pipeline into Snowflake; product search uses OpenSearch with Bedrock embeddings" src="examples/ecommerce-on-aws/architecture.png">
+  <source media="(prefers-color-scheme: dark)" srcset="examples/ecommerce-on-aws/walkthrough-dark.gif">
+  <img alt="Animated walkthrough of an online store on AWS: a shopper's order travels step by step from CloudFront and API Gateway through the Fargate order service, Aurora and DynamoDB into a Step Functions checkout that charges Stripe and publishes OrderPlaced to EventBridge, which fans out to notifications, the data lake and the fulfilment queue, Lambda and the logistics partner" src="examples/ecommerce-on-aws/walkthrough.gif">
 </picture>
+
+<sub>Recorded with <code>build --gif</code> from the example's <a href="examples/ecommerce-on-aws/architecture.yaml">YAML</a>. Open the <a href="examples/ecommerce-on-aws/walkthrough.html">interactive walkthrough</a> or the <a href="examples/ecommerce-on-aws/architecture.png">static diagram</a>.</sub>
 
 ## Why
 
@@ -69,14 +71,37 @@ decisions:
   - title: EventBridge as the backbone after checkout
     status: accepted
     alternatives: [SNS fan-out (no content-based routing), Direct calls (couples checkout to every consumer)]
+
+walkthroughs:                           # step-by-step tour, played on the diagram
+  - title: Shopper places an order
+    steps:
+      - from: orders
+        to: checkout
+        title: Start checkout
+        via: StartSyncExecution (orderId, amount)
+      - from: checkout
+        to: stripe
+        title: Charge the card
+        detail: If the payment fails, the workflow releases the reserved stock.
 ```
 
-See the full example in [`examples/ecommerce-on-aws/`](examples/ecommerce-on-aws/): the [YAML](examples/ecommerce-on-aws/architecture.yaml), the [generated ARCHITECTURE.md](examples/ecommerce-on-aws/ARCHITECTURE.md) and the [interactive HTML](examples/ecommerce-on-aws/architecture.html). The full format is in [`skills/blueprint-md/references/format.md`](skills/blueprint-md/references/format.md).
+See the full example in [`examples/ecommerce-on-aws/`](examples/ecommerce-on-aws/): the [YAML](examples/ecommerce-on-aws/architecture.yaml), the [generated ARCHITECTURE.md](examples/ecommerce-on-aws/ARCHITECTURE.md), the [interactive HTML](examples/ecommerce-on-aws/architecture.html) and the [walkthrough](examples/ecommerce-on-aws/walkthrough.html). The full format is in [`skills/blueprint-md/references/format.md`](skills/blueprint-md/references/format.md).
 
 More examples:
 
 - [`examples/order-to-cash/`](examples/order-to-cash/): Salesforce orders to SAP S/4HANA through MuleSoft API-led layers
 - [`examples/salesforce-to-aws/`](examples/salesforce-to-aws/): Salesforce events processed on AWS
+
+## Step-by-step walkthroughs
+
+A diagram shows what exists; a walkthrough shows what *happens*. Every `build` writes `walkthrough.html` next to the diagram: pick a scenario and step through it. Each step lights up the two components involved, sends a dot along the connection between them (also against the arrow, for responses and events), keeps the earlier steps as a faint trail, and explains the step in a side panel: the operation or protocol (`via`), what happens and why (`detail`) and the files involved (`code`).
+
+- **Scenarios:** `walkthroughs:` in the YAML, or in their own file with `walkthroughs: walkthroughs.yaml`. A step moves along a connection (`from:` / `to:`) or stays in one component (`at:`).
+- **No extra work for simple cases:** every plain `flows:` entry becomes a scenario too, with the connection labels as step titles.
+- **Stays honest:** `build` warns when a step has no matching connection (it is drawn as a dashed line) or names a code file that does not exist, so the diagram and the tour cannot drift apart.
+- **Controls:** Prev / Play / Next, `←` `→`, `space`, `1`–`9` for the scenario, `f` to fit the window. Links such as `walkthrough.html#1-8` open a scenario at a given step.
+- **Animated GIF:** `build --gif` records the first scenario as `walkthrough.gif` and `walkthrough-dark.gif` for READMEs, wikis and slides, like the one at the top of this page.
+- **For agents too:** `ARCHITECTURE.md` lists every walkthrough step, so a coding agent knows the order of calls it has to implement.
 
 ## Building block catalog
 
@@ -120,7 +145,7 @@ The repo contains two [agent skills](https://agentskills.io) that work as a pair
 | Skill | Phase | What it does |
 |---|---|---|
 | **blueprint-architect** | think | Acts as a senior architect: turns business requirements and constraints (licensed tools, platforms, budget, skills) into numbered requirements, drafts 2–4 real solution options, checks each against every requirement, recommends one and lets you decide. Writes `architecture-options.md`. |
-| **blueprint-md** | draw | Turns the chosen option into `architecture.yaml`, the diagram and `ARCHITECTURE.md`; the rejected options become decision records. |
+| **blueprint-md** | draw | Turns the chosen option into `architecture.yaml`, the diagram, a step-by-step walkthrough of the main scenarios and `ARCHITECTURE.md`; the rejected options become decision records. |
 
 Install both for Claude Code:
 
@@ -147,13 +172,14 @@ The agent asks about volumes, timing, data ownership and authentication, propose
 
 ```bash
 pip install pyyaml                      # required
-pip install playwright && python3 -m playwright install chromium   # only for PNGs
+pip install playwright && python3 -m playwright install chromium   # only for PNGs and GIFs
+pip install pillow                      # only for GIFs
 
-python3 skills/blueprint-md/scripts/blueprint.py build architecture.yaml --png
+python3 skills/blueprint-md/scripts/blueprint.py build architecture.yaml --png --gif
 python3 skills/blueprint-md/scripts/blueprint.py check architecture.yaml
 ```
 
-`build` writes `architecture.html`, `ARCHITECTURE.md` and, with `--png`, light and dark PNGs. `check` validates the file and reports layout problems such as overlapping groups, lines crossing components, or labels without room. Icons are fetched on first use from svgl, devicon, gilbarbara/logos and Lucide, and cached in `.blueprint/` next to the YAML.
+`build` writes `architecture.html`, `walkthrough.html` (when the YAML has walkthroughs or flows), `ARCHITECTURE.md` and, with `--png`, light and dark PNGs; `--gif` adds the animated walkthrough. `check` validates the file and reports layout problems such as overlapping groups, lines crossing components, or labels without room, and walkthrough steps without a matching connection. Icons are fetched on first use from svgl, devicon, gilbarbara/logos and Lucide, and cached in `.blueprint/` next to the YAML.
 
 ## Roadmap
 
@@ -163,6 +189,7 @@ python3 skills/blueprint-md/scripts/blueprint.py check architecture.yaml
 - [ ] Project scaffolding from the YAML (starting with Salesforce SFDX projects)
 - [ ] Mermaid and C4 export
 - [x] Official Salesforce icons (Lightning Design System, `slds:`)
+- [x] Interactive step-by-step walkthroughs and animated GIFs
 - [ ] Salesforce product logos for each cloud (Sales, Service, Marketing, Commerce)
 - [ ] Several views (overview and detail) from one model
 - [ ] Interactive canvas for editing with an agent

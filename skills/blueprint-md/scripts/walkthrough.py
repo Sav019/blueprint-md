@@ -67,6 +67,54 @@ def markdown(m):
     return L
 
 
+def render_gif(tour_path, gif_path, width, height, scenario=0, out_width=1400):
+    """Record one scenario of walkthrough.html as light and dark animated GIFs."""
+    try:
+        from playwright.sync_api import sync_playwright
+        from PIL import Image
+    except ImportError:
+        raise RuntimeError("--gif needs Playwright and Pillow: pip install playwright pillow && "
+                           "python3 -m playwright install chromium")
+    import io
+    still = (".wt-panel{display:none!important}body.wt{padding-right:20px!important}"
+             "*{transition:none!important;animation:none!important}")
+    written = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        for theme, suffix in (("light", ""), ("dark", "-dark")):
+            page = browser.new_page(viewport={"width": width + 120, "height": height + 400}, color_scheme=theme)
+            page.goto(tour_path.resolve().as_uri())
+            page.add_style_tag(content=still)
+            page.evaluate(f"document.documentElement.dataset.theme='{theme}'; walkthrough.fit(false); walkthrough.select({scenario})")
+            canvas = page.locator(".canvas")
+            shot = lambda: Image.open(io.BytesIO(canvas.screenshot())).convert("RGB")
+            frames, durations = [], []
+            for n, step in enumerate(page.evaluate(f"walkthrough.steps({scenario})")):
+                page.evaluate(f"walkthrough.go({n}); walkthrough.pause()")
+                if not step.get("at"):
+                    for k in range(9):
+                        page.evaluate(f"walkthrough.dot({k / 8})")
+                        frames.append(shot())
+                        durations.append(70)
+                frames.append(shot())
+                durations.append(1500 if step.get("at") else 1100)
+            durations[-1] = 2500
+            page.close()
+            scale = min(1, out_width / frames[0].width)
+            size = (round(frames[0].width * scale), round(frames[0].height * scale))
+            frames = [f.resize(size, Image.LANCZOS) for f in frames]
+            sample = Image.new("RGB", (size[0], size[1] * 3))
+            for k, f in enumerate((frames[0], frames[len(frames) // 2], frames[-1])):
+                sample.paste(f, (0, size[1] * k))
+            palette = sample.quantize(colors=255, method=Image.Quantize.MEDIANCUT)
+            frames = [f.quantize(palette=palette, dither=Image.Dither.NONE) for f in frames]
+            target = gif_path.with_name(gif_path.stem + suffix + ".gif")
+            frames[0].save(target, save_all=True, append_images=frames[1:], duration=durations, loop=0, optimize=True)
+            written.append(target)
+        browser.close()
+    return written
+
+
 PLAYER = r"""
 <style>
 body.wt{padding-right:420px}
@@ -192,7 +240,7 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     });
   };
 
-  let sIdx = 0, i = -1, timer = null, raf = null, fit = false;
+  let sIdx = 0, i = -1, timer = null, raf = null, fit = false, cur = null;
   const tabs = $('.wt-tabs', panel), list = $('.wt-list', panel);
   DATA.scenarios.forEach((s, k) => {
     const b = document.createElement('button');
@@ -238,6 +286,7 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     });
 
     cancelAnimationFrame(raf);
+    cur = null;
     const sp = stepPath(st);
     active.style.display = dot.style.display = sp ? '' : 'none';
     if (sp) {
@@ -251,7 +300,8 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     callout.textContent = '';
     const num = document.createElement('b'); num.textContent = i + 1;
     callout.append(num, st.title);
-    callout.style.left = target.x1 + 10 + 'px';
+    const right = target.x1 + 10 + callout.offsetWidth > parseFloat(canvas.style.width);
+    callout.style.left = (right ? target.x0 - 10 - callout.offsetWidth : target.x1 + 10) + 'px';
     callout.style.top = target.y0 - 34 + 'px';
 
     $('.wt-route', panel).textContent = st.at ? nodes[st.at].name : `${nodes[st.from].name}  →  ${nodes[st.to].name}`;
@@ -271,15 +321,17 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     reveal(ids);
   }
 
+  function place(t) {
+    if (!cur) return;
+    const p = active.getPointAtLength(cur.len * Math.min(1, Math.max(0, cur.rev ? 1 - t : t)));
+    dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y);
+    dot.style.opacity = t > 1 ? 0 : 1;
+  }
+
   function animate(rev) {
-    const len = active.getTotalLength(), dur = Math.min(2200, 700 + len * 1.4), t0 = performance.now();
-    const tick = (now) => {
-      const t = ((now - t0) % (dur + 400)) / dur;
-      const p = active.getPointAtLength(len * Math.min(1, rev ? 1 - t : t));
-      dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y);
-      dot.style.opacity = t > 1 ? 0 : 1;
-      raf = requestAnimationFrame(tick);
-    };
+    cur = { len: active.getTotalLength(), rev };
+    const dur = Math.min(2200, 700 + cur.len * 1.4), t0 = performance.now();
+    const tick = (now) => { place(((now - t0) % (dur + 400)) / dur); raf = requestAnimationFrame(tick); };
     raf = requestAnimationFrame(tick);
   }
 
@@ -330,6 +382,16 @@ svg.wt-layer{position:absolute;inset:0;pointer-events:none;overflow:visible}
     else if (e.key === 'Escape') reset();
     else if (/^[1-9]$/.test(e.key) && DATA.scenarios[+e.key - 1]) selectScenario(+e.key - 1);
   });
+
+  // Scripting hook, used by `build --gif` to record frames.
+  window.walkthrough = {
+    steps: (k) => DATA.scenarios[k].steps,
+    select: selectScenario,
+    go: (n) => { stop(); go(n); },
+    fit: setFit,
+    pause: () => cancelAnimationFrame(raf),
+    dot: place,
+  };
 
   const m = location.hash.match(/^#(\d+)-(\d+)$/);
   setFit(true);

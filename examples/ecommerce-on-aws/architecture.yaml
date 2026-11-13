@@ -220,6 +220,82 @@ flows:
   Shopper searches "warm jacket for hiking": [shopper, cdn, api, catalog, search, ai]
   Nightly sales reporting: [bus, lake, etl, warehouse]
 
+walkthroughs:
+  - title: Shopper places an order
+    summary: >
+      From the Buy button to the parcel leaving the warehouse. The API call ends after checkout
+      publishes OrderPlaced; everything after that reacts to the event on its own.
+    steps:
+      - from: shopper
+        to: cdn
+        title: Click "Buy now"
+        via: HTTPS POST /api/orders
+        detail: The storefront sends the order with the shopper's JWT. AWS WAF on CloudFront filters bots and abuse.
+      - from: cdn
+        to: api
+        title: Route /api/* to the Store API
+        detail: CloudFront forwards API paths to API Gateway; static files never reach it.
+      - from: api
+        to: auth
+        title: Verify the shopper
+        via: JWT authorizer
+        detail: API Gateway checks the Cognito token and throttles per client before any service runs.
+      - from: api
+        to: orders
+        title: Place the order
+        via: VPC link
+        detail: The request enters the private subnets; the Order Service owns orders and stock.
+      - from: orders
+        to: carts
+        title: Read the cart
+        detail: The cart is loaded from DynamoDB by session id.
+      - from: orders
+        to: db
+        title: Reserve stock
+        via: SQL transaction
+        detail: Order, order lines and the stock reservation are written in one Aurora transaction.
+      - from: orders
+        to: checkout
+        title: Start checkout
+        via: StartSyncExecution (orderId, amount)
+        detail: An Express workflow takes over payment, stock confirmation and publishing.
+      - from: checkout
+        to: stripe
+        title: Charge the card
+        via: REST, idempotency key = orderId
+        detail: >
+          Stripe confirms the Payment Intent. If the payment fails, the workflow's compensation path
+          releases the reserved stock and the shopper sees the error.
+      - from: checkout
+        to: bus
+        title: Publish OrderPlaced
+        via: EventBridge PutEvents
+        detail: One event for every consumer; the API returns the order number to the shopper now.
+      - from: bus
+        to: notify
+        title: Send the confirmation
+        via: rule → SNS
+        detail: The shopper gets the order confirmation by email or SMS.
+      - from: bus
+        to: lake
+        title: Archive the event
+        via: rule → Firehose
+        detail: Every order event lands in S3 as Parquet for the nightly reporting.
+      - from: bus
+        to: queue
+        title: Queue for fulfilment
+        via: rule → SQS
+        detail: The queue absorbs peaks; orders the partner rejects go to a dead-letter queue.
+      - from: queue
+        to: fulfil
+        title: Pick up the order
+        detail: The Fulfilment function polls the queue in batches. Handlers are idempotent because events can arrive twice.
+      - from: fulfil
+        to: logistics
+        title: Ship it
+        via: REST, OAuth 2.0
+        detail: The 3PL picks and packs; the function publishes OrderShipped with the tracking number.
+
 decisions:
   - title: EventBridge as the backbone after checkout
     status: accepted

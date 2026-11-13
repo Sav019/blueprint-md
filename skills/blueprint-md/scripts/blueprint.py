@@ -2,14 +2,16 @@
 """blueprint-md: turn one architecture.yaml into a diagram and an agent-ready ARCHITECTURE.md.
 
 Usage:
-  python3 blueprint.py build architecture.yaml [--out DIR] [--png] [--offline]
+  python3 blueprint.py build architecture.yaml [--out DIR] [--png] [--gif] [--offline]
   python3 blueprint.py check architecture.yaml
   python3 blueprint.py catalog [words…] [--write PATH] [--check] [--no-links]
   python3 blueprint.py icons aws|azure|gcp [words…] [--update]
 
 build   writes <name>.html (self-contained diagram), ARCHITECTURE.md, walkthrough.html (when the
         YAML has walkthroughs or flows) and, with --png, <name>.png + <name>-dark.png (needs
-        Playwright: pip install playwright && python3 -m playwright install chromium)
+        Playwright: pip install playwright && python3 -m playwright install chromium);
+        --gif records the first walkthrough as walkthrough.gif + walkthrough-dark.gif (also
+        needs Pillow: pip install pillow)
 check   parses, lays out and routes the diagram and prints warnings without writing files
 catalog lists the building blocks (filter with words), writes them as a Markdown page,
         or checks entries, review dates and docs links
@@ -1128,6 +1130,7 @@ def main(argv=None):
     b.add_argument("yaml", type=pathlib.Path)
     b.add_argument("--out", type=pathlib.Path, help="output folder (default: next to the YAML)")
     b.add_argument("--png", action="store_true", help="also write light and dark PNGs")
+    b.add_argument("--gif", action="store_true", help="also record the first walkthrough as light and dark GIFs")
     b.add_argument("--offline", action="store_true", help="use cached icons only")
     c = sub.add_parser("check", help="validate and lay out without writing files")
     c.add_argument("yaml", type=pathlib.Path)
@@ -1193,6 +1196,15 @@ def main(argv=None):
             tour_path = out / "walkthrough.html"
             tour_path.write_text(walkthrough.render_walkthrough(diagram, m, html_path.name), encoding="utf-8")
             print(f"wrote {tour_path}")
+            if args.gif:
+                try:
+                    gifs = walkthrough.render_gif(tour_path, out / "walkthrough.gif", m["width"], m["height"])
+                except RuntimeError as e:
+                    raise BlueprintError(f"error: {e}")
+                for p in gifs:
+                    print(f"wrote {p}")
+        elif args.gif:
+            print("warning: --gif needs walkthroughs or flows in the YAML")
         image = None
         if args.png:
             for p in render_png(html_path, out / f"{stem}.png", m["width"], m["height"]):
